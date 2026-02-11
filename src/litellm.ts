@@ -59,6 +59,7 @@ type LiteLLMModel = {
 export const LITELLM_MODELS: LiteLLMModel[] = [
   // Smart routing meta-model — proxy replaces with actual model
   // vision: true because several tier models support it (gemini, grok, mistral, kimi-k2-5)
+  // reasoning: true so OpenClaw sends thinking params (8/13 models support it; drop_params handles the rest)
   {
     id: "auto",
     name: "ClawRouter Smart Router",
@@ -67,6 +68,7 @@ export const LITELLM_MODELS: LiteLLMModel[] = [
     contextWindow: 1_000_000,
     maxOutput: 65_536,
     vision: true,
+    reasoning: true,
   },
 
   // === Qwen Models (Venice AI) ===
