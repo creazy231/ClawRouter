@@ -47,8 +47,9 @@ export function route(
   const browserScore = ruleResult.browserScore ?? 0;
   const isAutoBrowser = browserScore >= 0.6;
   const hasExplicitBrowserTools = options.hasBrowserTools ?? false;
+  const browserTiersEnabled = process.env.CLAWROUTER_BROWSER_TIERS === "true";
   const useBrowserTiers =
-    (isAutoBrowser || hasExplicitBrowserTools) && config.browserTiers != null;
+    browserTiersEnabled && (isAutoBrowser || hasExplicitBrowserTools) && config.browserTiers != null;
 
   // Determine if agentic tiers should be used:
   // 1. Explicit agenticMode config OR

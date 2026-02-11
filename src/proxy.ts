@@ -1011,7 +1011,6 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     socket.setTimeout(300_000);
 
     socket.on("timeout", () => {
-      console.error(`[ClawRouter] Socket timeout, destroying connection`);
       socket.destroy();
     });
 
