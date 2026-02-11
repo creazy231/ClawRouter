@@ -58,6 +58,7 @@ type LiteLLMModel = {
  */
 export const LITELLM_MODELS: LiteLLMModel[] = [
   // Smart routing meta-model — proxy replaces with actual model
+  // vision: true because several tier models support it (gemini, grok, mistral, kimi-k2-5)
   {
     id: "auto",
     name: "ClawRouter Smart Router",
@@ -65,6 +66,7 @@ export const LITELLM_MODELS: LiteLLMModel[] = [
     outputPrice: 0,
     contextWindow: 1_000_000,
     maxOutput: 65_536,
+    vision: true,
   },
 
   // === Qwen Models (Venice AI) ===

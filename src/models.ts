@@ -89,6 +89,7 @@ type BlockRunModel = {
 export const BLOCKRUN_MODELS: BlockRunModel[] = [
   // Smart routing meta-model — proxy replaces with actual model
   // NOTE: Model IDs are WITHOUT provider prefix (OpenClaw adds "blockrun/" automatically)
+  // vision: true because many tier models support it (gemini, grok, sonnet, etc.)
   {
     id: "auto",
     name: "BlockRun Smart Router",
@@ -96,6 +97,7 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     outputPrice: 0,
     contextWindow: 1_050_000,
     maxOutput: 128_000,
+    vision: true,
   },
 
   // OpenAI GPT-5 Family
