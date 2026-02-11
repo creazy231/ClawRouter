@@ -33,12 +33,22 @@ export function selectModel(
   const outputCost = pricing ? (maxOutputTokens / 1_000_000) * pricing.outputPrice : 0;
   const costEstimate = inputCost + outputCost;
 
-  // Baseline: what Claude Opus would cost (the premium default)
-  const opusPricing = modelPricing.get("anthropic/claude-opus-4");
-  const baselineInput = opusPricing
-    ? (estimatedInputTokens / 1_000_000) * opusPricing.inputPrice
+  // Baseline: the most expensive model in the catalog (used for savings %)
+  let baselinePricing: ModelPricing | undefined;
+  let maxTotalPrice = 0;
+  for (const [, p] of modelPricing) {
+    const total = p.inputPrice + p.outputPrice;
+    if (total > maxTotalPrice) {
+      maxTotalPrice = total;
+      baselinePricing = p;
+    }
+  }
+  const baselineInput = baselinePricing
+    ? (estimatedInputTokens / 1_000_000) * baselinePricing.inputPrice
     : 0;
-  const baselineOutput = opusPricing ? (maxOutputTokens / 1_000_000) * opusPricing.outputPrice : 0;
+  const baselineOutput = baselinePricing
+    ? (maxOutputTokens / 1_000_000) * baselinePricing.outputPrice
+    : 0;
   const baselineCost = baselineInput + baselineOutput;
 
   const savings = baselineCost > 0 ? Math.max(0, (baselineCost - costEstimate) / baselineCost) : 0;

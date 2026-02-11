@@ -110,6 +110,6 @@ export function route(
 }
 
 export { getFallbackChain, getFallbackChainFiltered } from "./selector.js";
-export { DEFAULT_ROUTING_CONFIG } from "./config.js";
+export { DEFAULT_ROUTING_CONFIG, LITELLM_ROUTING_CONFIG } from "./config.js";
 export type { RoutingDecision, Tier, RoutingConfig } from "./types.js";
 export type { ModelPricing } from "./selector.js";

@@ -9,6 +9,7 @@
  */
 
 import type { ModelDefinitionConfig, ModelProviderConfig } from "./types.js";
+import { isFreeMode, LITELLM_MODELS, LITELLM_MODEL_ALIASES } from "./litellm.js";
 
 /**
  * Model aliases for convenient shorthand access.
@@ -54,17 +55,19 @@ export const MODEL_ALIASES: Record<string, string> = {
 /**
  * Resolve a model alias to its full model ID.
  * Returns the original model if not an alias.
+ * Always strips "blockrun/" prefix (OpenClaw may add it as provider prefix).
  */
 export function resolveModelAlias(model: string): string {
+  const aliases = getActiveAliases();
   const normalized = model.trim().toLowerCase();
-  const resolved = MODEL_ALIASES[normalized];
+  const resolved = aliases[normalized];
   if (resolved) return resolved;
 
-  // Check with "blockrun/" prefix stripped
+  // Strip "blockrun/" prefix and check aliases / return stripped name
   if (normalized.startsWith("blockrun/")) {
     const withoutPrefix = normalized.slice("blockrun/".length);
-    const resolvedWithoutPrefix = MODEL_ALIASES[withoutPrefix];
-    if (resolvedWithoutPrefix) return resolvedWithoutPrefix;
+    const resolvedWithoutPrefix = aliases[withoutPrefix];
+    return resolvedWithoutPrefix ?? withoutPrefix;
   }
 
   return model;
@@ -525,6 +528,23 @@ export function getAgenticModels(): string[] {
  */
 export function getModelContextWindow(modelId: string): number | undefined {
   const normalized = modelId.replace("blockrun/", "");
-  const model = BLOCKRUN_MODELS.find((m) => m.id === normalized);
+  const models = getActiveModels();
+  const model = models.find((m) => m.id === normalized);
   return model?.contextWindow;
+}
+
+/**
+ * Get the active model catalog based on current mode.
+ * Returns LITELLM_MODELS in free mode, BLOCKRUN_MODELS otherwise.
+ */
+export function getActiveModels(): BlockRunModel[] {
+  return isFreeMode() ? (LITELLM_MODELS as BlockRunModel[]) : BLOCKRUN_MODELS;
+}
+
+/**
+ * Get the active alias map based on current mode.
+ * Returns LITELLM_MODEL_ALIASES in free mode, MODEL_ALIASES otherwise.
+ */
+export function getActiveAliases(): Record<string, string> {
+  return isFreeMode() ? LITELLM_MODEL_ALIASES : MODEL_ALIASES;
 }

@@ -8,6 +8,7 @@
  */
 
 import type { RoutingConfig } from "./types.js";
+export { LITELLM_ROUTING_CONFIG } from "../litellm.js";
 
 export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   version: "2.0",

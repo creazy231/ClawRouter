@@ -9,6 +9,11 @@
  *   npx @blockrun/clawrouter --version    # Show version
  *   npx @blockrun/clawrouter --port 8402  # Custom port
  *
+ * Free mode (env vars or --env-file):
+ *   CLAWROUTER_FREE_MODE=true
+ *   CLAWROUTER_API_BASE=http://localhost:4000/v1
+ *   CLAWROUTER_API_KEY=sk-...
+ *
  * For production deployments, use with PM2:
  *   pm2 start "npx @blockrun/clawrouter" --name clawrouter
  */
@@ -17,6 +22,7 @@ import { startProxy, getProxyPort } from "./proxy.js";
 import { resolveOrGenerateWalletKey } from "./auth.js";
 import { BalanceMonitor } from "./balance.js";
 import { VERSION } from "./version.js";
+import { isFreeMode, getFreeModeApiBase, getFreeModeApiKey, LITELLM_MODELS } from "./litellm.js";
 
 function printHelp(): void {
   console.log(`
@@ -31,16 +37,19 @@ Options:
   --port <number>   Port to listen on (default: ${getProxyPort()})
 
 Examples:
-  # Start standalone proxy (survives gateway restarts)
+  # Start standalone proxy (BlockRun mode with x402 payments)
   npx @blockrun/clawrouter
+
+  # Start in free mode with LiteLLM
+  node --env-file=.env dist/cli.js
 
   # Start on custom port
   npx @blockrun/clawrouter --port 9000
 
-  # Production deployment with PM2
-  pm2 start "npx @blockrun/clawrouter" --name clawrouter
-
 Environment Variables:
+  CLAWROUTER_FREE_MODE    Set to "true" to bypass payments (LiteLLM mode)
+  CLAWROUTER_API_BASE     Upstream API URL for free mode
+  CLAWROUTER_API_KEY      Bearer token for free mode
   BLOCKRUN_WALLET_KEY     Private key for x402 payments (auto-generated if not set)
   BLOCKRUN_PROXY_PORT     Default proxy port (default: 8402)
 
@@ -79,6 +88,67 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  const freeModeActive = isFreeMode();
+
+  if (freeModeActive) {
+    // --- Free mode: LiteLLM backend, no wallet needed ---
+    const apiBase = getFreeModeApiBase();
+    const apiKey = getFreeModeApiKey();
+
+    if (!apiBase) {
+      console.error("[ClawRouter] CLAWROUTER_API_BASE is required in free mode");
+      console.error("[ClawRouter] Example: CLAWROUTER_API_BASE=http://localhost:4000/v1");
+      process.exit(1);
+    }
+
+    const modelCount = LITELLM_MODELS.filter((m) => m.id !== "auto").length;
+    console.log(`[ClawRouter] Free mode — ${modelCount} models via ${apiBase}`);
+
+    const proxy = await startProxy({
+      freeMode: true,
+      apiBase,
+      apiKey,
+      port: args.port,
+      onReady: (port) => {
+        console.log(`[ClawRouter] Proxy listening on http://127.0.0.1:${port}`);
+        console.log(`[ClawRouter] Health check: http://127.0.0.1:${port}/health`);
+      },
+      onError: (error) => {
+        console.error(`[ClawRouter] Error: ${error.message}`);
+      },
+      onRouted: (decision) => {
+        const cost = decision.costEstimate.toFixed(4);
+        const saved = (decision.savings * 100).toFixed(0);
+        console.log(
+          `[ClawRouter] [${decision.tier}] ${decision.model} $${cost} (saved ${saved}%)`,
+        );
+      },
+    });
+
+    console.log(`[ClawRouter] Ready - Ctrl+C to stop`);
+
+    // Handle graceful shutdown
+    const shutdown = async (signal: string) => {
+      console.log(`\n[ClawRouter] Received ${signal}, shutting down...`);
+      try {
+        await proxy.close();
+        console.log(`[ClawRouter] Proxy closed`);
+        process.exit(0);
+      } catch (err) {
+        console.error(`[ClawRouter] Error during shutdown: ${err}`);
+        process.exit(1);
+      }
+    };
+
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+
+    // Keep process alive
+    await new Promise(() => {});
+    return;
+  }
+
+  // --- BlockRun mode (default): x402 payments ---
   // Resolve wallet key
   const { key: walletKey, address, source } = await resolveOrGenerateWalletKey();
 

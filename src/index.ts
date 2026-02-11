@@ -27,7 +27,9 @@ import { blockrunProvider, setActiveProxy } from "./provider.js";
 import { startProxy, getProxyPort } from "./proxy.js";
 import { resolveOrGenerateWalletKey, WALLET_FILE } from "./auth.js";
 import type { RoutingConfig } from "./router/index.js";
+import { LITELLM_ROUTING_CONFIG } from "./router/index.js";
 import { BalanceMonitor } from "./balance.js";
+import { isFreeMode, getFreeModeApiBase, getFreeModeApiKey } from "./litellm.js";
 
 /**
  * Wait for proxy health check to pass (quick check, not RPC).
@@ -46,7 +48,7 @@ async function waitForProxyHealth(port: number, timeoutMs = 3000): Promise<boole
   }
   return false;
 }
-import { OPENCLAW_MODELS } from "./models.js";
+import { OPENCLAW_MODELS, getActiveModels } from "./models.js";
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -357,6 +359,50 @@ let activeProxyHandle: Awaited<ReturnType<typeof startProxy>> | null = null;
  * treating activate() as an alias (def.register ?? def.activate).
  */
 async function startProxyInBackground(api: OpenClawPluginApi): Promise<void> {
+  const freeModeActive = isFreeMode();
+
+  if (freeModeActive) {
+    // Free mode: no wallet needed, use LiteLLM as upstream
+    const apiBase = getFreeModeApiBase();
+    const apiKey = getFreeModeApiKey();
+
+    if (!apiBase) {
+      api.logger.error("CLAWROUTER_API_BASE is required in free mode");
+      return;
+    }
+
+    api.logger.info(`Free mode — routing through ${apiBase}`);
+
+    // Use LiteLLM routing config (full config, not partial)
+    const proxy = await startProxy({
+      freeMode: true,
+      apiBase,
+      apiKey,
+      routingConfig: LITELLM_ROUTING_CONFIG,
+      onReady: (port) => {
+        api.logger.info(`ClawRouter proxy listening on port ${port} (free mode)`);
+      },
+      onError: (error) => {
+        api.logger.error(`Proxy error: ${error.message}`);
+      },
+      onRouted: (decision) => {
+        const cost = decision.costEstimate.toFixed(4);
+        const saved = (decision.savings * 100).toFixed(0);
+        api.logger.info(
+          `[${decision.tier}] ${decision.model} $${cost} (saved ${saved}%) | ${decision.reasoning}`,
+        );
+      },
+    });
+
+    setActiveProxy(proxy);
+    activeProxyHandle = proxy;
+
+    const modelCount = getActiveModels().filter((m) => m.id !== "auto").length;
+    api.logger.info(`ClawRouter ready — ${modelCount} models via LiteLLM (free mode)`);
+    return;
+  }
+
+  // --- BlockRun mode (default) ---
   // Resolve wallet key: saved file → env var → auto-generate
   const { key: walletKey, address, source } = await resolveOrGenerateWalletKey();
 
@@ -569,13 +615,16 @@ const plugin: OpenClawPluginDefinition = {
     // Register BlockRun as a provider (sync — available immediately)
     api.registerProvider(blockrunProvider);
 
+    const freeModeActive = isFreeMode();
+
     // Inject models config into OpenClaw config file
     // This persists the config so models are recognized on restart
     injectModelsConfig(api.logger);
 
-    // Inject dummy auth profiles into agent auth stores
-    // OpenClaw's agent system looks for auth even if provider has auth: []
-    injectAuthProfile(api.logger);
+    // Inject dummy auth profiles into agent auth stores (not needed in free mode)
+    if (!freeModeActive) {
+      injectAuthProfile(api.logger);
+    }
 
     // Also set runtime config for immediate availability
     const runtimePort = getProxyPort();
@@ -589,7 +638,7 @@ const plugin: OpenClawPluginDefinition = {
       baseUrl: `http://127.0.0.1:${runtimePort}/v1`,
       api: "openai-completions",
       // apiKey is required by pi-coding-agent's ModelRegistry for providers with models.
-      apiKey: "x402-proxy-handles-auth",
+      apiKey: freeModeActive ? (getFreeModeApiKey() ?? "free-mode") : "x402-proxy-handles-auth",
       models: OPENCLAW_MODELS,
     };
 
@@ -605,7 +654,12 @@ const plugin: OpenClawPluginDefinition = {
       model.primary = "blockrun/auto";
     }
 
-    api.logger.info("BlockRun provider registered (30+ models via x402)");
+    if (freeModeActive) {
+      const modelCount = getActiveModels().filter((m) => m.id !== "auto").length;
+      api.logger.info(`Provider registered (${modelCount} models via LiteLLM — free mode)`);
+    } else {
+      api.logger.info("BlockRun provider registered (30+ models via x402)");
+    }
 
     // Register /wallet command for wallet management
     createWalletCommand()
@@ -695,7 +749,17 @@ export {
   isAgenticModel,
   getAgenticModels,
   getModelContextWindow,
+  getActiveModels,
+  getActiveAliases,
 } from "./models.js";
+export {
+  isFreeMode,
+  getFreeModeApiBase,
+  getFreeModeApiKey,
+  LITELLM_MODELS,
+  LITELLM_MODEL_ALIASES,
+  LITELLM_ROUTING_CONFIG,
+} from "./litellm.js";
 export {
   route,
   DEFAULT_ROUTING_CONFIG,

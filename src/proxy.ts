@@ -36,7 +36,8 @@ import {
   type RoutingConfig,
   type ModelPricing,
 } from "./router/index.js";
-import { BLOCKRUN_MODELS, resolveModelAlias, getModelContextWindow } from "./models.js";
+import { resolveModelAlias, getModelContextWindow, getActiveModels } from "./models.js";
+import { isFreeMode, getFreeModeApiBase, getFreeModeApiKey, LITELLM_ROUTING_CONFIG } from "./litellm.js";
 import { logUsage, type UsageEntry } from "./logger.js";
 import { getStats } from "./stats.js";
 import { RequestDeduplicator } from "./dedup.js";
@@ -531,7 +532,8 @@ export type InsufficientFundsInfo = {
 };
 
 export type ProxyOptions = {
-  walletKey: string;
+  /** Wallet private key for x402 payments. Required in BlockRun mode, ignored in free mode. */
+  walletKey?: string;
   apiBase?: string;
   /** Port to listen on (default: 8402) */
   port?: number;
@@ -540,6 +542,13 @@ export type ProxyOptions = {
   requestTimeoutMs?: number;
   /** Skip balance checks (for testing only). Default: false */
   skipBalanceCheck?: boolean;
+  /**
+   * Free mode: bypass x402 payments, use Bearer token auth against
+   * a self-hosted OpenAI-compatible API (e.g., LiteLLM).
+   */
+  freeMode?: boolean;
+  /** API key for free mode (sent as Authorization: Bearer header). */
+  apiKey?: string;
   /**
    * Session persistence config. When enabled, maintains model selection
    * across requests within a session to prevent mid-task model switching.
@@ -560,33 +569,57 @@ export type ProxyHandle = {
   baseUrl: string;
   walletAddress: string;
   balanceMonitor: BalanceMonitor;
+  freeMode?: boolean;
   close: () => Promise<void>;
 };
 
 /**
- * Build model pricing map from BLOCKRUN_MODELS.
+ * Build model pricing map from active model catalog.
  */
 function buildModelPricing(): Map<string, ModelPricing> {
+  const models = getActiveModels();
   const map = new Map<string, ModelPricing>();
-  for (const m of BLOCKRUN_MODELS) {
-    if (m.id === AUTO_MODEL) continue; // skip meta-model
+  for (const m of models) {
+    if (m.id === AUTO_MODEL || m.id === AUTO_MODEL_SHORT) continue; // skip meta-model
     map.set(m.id, { inputPrice: m.inputPrice, outputPrice: m.outputPrice });
   }
   return map;
 }
 
 /**
- * Merge partial routing config overrides with defaults.
+ * Merge partial routing config overrides with a base config.
+ * In free mode the base is LITELLM_ROUTING_CONFIG; otherwise DEFAULT_ROUTING_CONFIG.
  */
-function mergeRoutingConfig(overrides?: Partial<RoutingConfig>): RoutingConfig {
-  if (!overrides) return DEFAULT_ROUTING_CONFIG;
+function mergeRoutingConfig(
+  overrides?: Partial<RoutingConfig>,
+  base: RoutingConfig = DEFAULT_ROUTING_CONFIG,
+): RoutingConfig {
+  if (!overrides) return base;
   return {
-    ...DEFAULT_ROUTING_CONFIG,
+    ...base,
     ...overrides,
-    classifier: { ...DEFAULT_ROUTING_CONFIG.classifier, ...overrides.classifier },
-    scoring: { ...DEFAULT_ROUTING_CONFIG.scoring, ...overrides.scoring },
-    tiers: { ...DEFAULT_ROUTING_CONFIG.tiers, ...overrides.tiers },
-    overrides: { ...DEFAULT_ROUTING_CONFIG.overrides, ...overrides.overrides },
+    classifier: { ...base.classifier, ...overrides.classifier },
+    scoring: { ...base.scoring, ...overrides.scoring },
+    tiers: { ...base.tiers, ...overrides.tiers },
+    overrides: { ...base.overrides, ...overrides.overrides },
+  };
+}
+
+/**
+ * Create a simple fetch wrapper for free mode (no x402 payments).
+ * Adds Authorization: Bearer header and matches the payFetch signature.
+ */
+function createAuthFetch(apiKey: string) {
+  return async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+    // Third arg (preAuth) intentionally unused — matches payFetch signature
+  ): Promise<Response> => {
+    const headers = new Headers(init?.headers);
+    if (apiKey) {
+      headers.set("Authorization", `Bearer ${apiKey}`);
+    }
+    return fetch(input, { ...init, headers });
   };
 }
 
@@ -599,7 +632,8 @@ function estimateAmount(
   bodyLength: number,
   maxTokens: number,
 ): string | undefined {
-  const model = BLOCKRUN_MODELS.find((m) => m.id === modelId);
+  const models = getActiveModels();
+  const model = models.find((m) => m.id === modelId);
   if (!model) return undefined;
 
   // Rough estimate: ~4 chars per token for input
@@ -625,7 +659,10 @@ function estimateAmount(
  * Returns a handle with the assigned port, base URL, and a close function.
  */
 export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
-  const apiBase = options.apiBase ?? BLOCKRUN_API;
+  const isFreeModeActive = options.freeMode ?? isFreeMode();
+  const apiBase = options.apiBase
+    ?? (isFreeModeActive ? getFreeModeApiBase() : undefined)
+    ?? BLOCKRUN_API;
 
   // Determine port: options.port > env var > default
   const listenPort = options.port ?? getProxyPort();
@@ -634,14 +671,20 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
   const existingWallet = await checkExistingProxy(listenPort);
   if (existingWallet) {
     // Proxy already running — reuse it instead of failing with EADDRINUSE
-    const account = privateKeyToAccount(options.walletKey as `0x${string}`);
-    const balanceMonitor = new BalanceMonitor(account.address);
+    const walletAddress = isFreeModeActive
+      ? "free-mode"
+      : (() => {
+          const account = privateKeyToAccount(options.walletKey as `0x${string}`);
+          return account.address;
+        })();
+    const balanceMonitor = isFreeModeActive
+      ? new BalanceMonitor("0x0000000000000000000000000000000000000000")
+      : new BalanceMonitor(walletAddress);
     const baseUrl = `http://127.0.0.1:${listenPort}`;
 
-    // Verify the existing proxy is using the same wallet (or warn if different)
-    if (existingWallet !== account.address) {
+    if (!isFreeModeActive && existingWallet !== walletAddress) {
       console.warn(
-        `[ClawRouter] Existing proxy on port ${listenPort} uses wallet ${existingWallet}, but current config uses ${account.address}. Reusing existing proxy.`,
+        `[ClawRouter] Existing proxy on port ${listenPort} uses wallet ${existingWallet}, but current config uses ${walletAddress}. Reusing existing proxy.`,
       );
     }
 
@@ -652,21 +695,46 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       baseUrl,
       walletAddress: existingWallet,
       balanceMonitor,
+      freeMode: isFreeModeActive,
       close: async () => {
         // No-op: we didn't start this proxy, so we shouldn't close it
       },
     };
   }
 
-  // Create x402 payment-enabled fetch from wallet private key
-  const account = privateKeyToAccount(options.walletKey as `0x${string}`);
-  const { fetch: payFetch } = createPaymentFetch(options.walletKey as `0x${string}`);
+  // --- Mode-dependent setup ---
+  let payFetch: (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+    preAuth?: PreAuthParams,
+  ) => Promise<Response>;
+  let walletAddress: string;
+  let balanceMonitor: BalanceMonitor;
 
-  // Create balance monitor for pre-request checks
-  const balanceMonitor = new BalanceMonitor(account.address);
+  if (isFreeModeActive) {
+    // Free mode: simple Bearer auth, no wallet, no balance checks
+    const apiKey = options.apiKey ?? getFreeModeApiKey() ?? "";
+    payFetch = createAuthFetch(apiKey);
+    walletAddress = "free-mode";
+    balanceMonitor = new BalanceMonitor("0x0000000000000000000000000000000000000000");
+    // Force skip balance checks in free mode
+    options.skipBalanceCheck = true;
+    console.log("[ClawRouter] Free mode active — bypassing x402 payments");
+  } else {
+    // BlockRun mode: x402 payment-enabled fetch from wallet private key
+    if (!options.walletKey) {
+      throw new Error("[ClawRouter] walletKey is required in BlockRun mode (set CLAWROUTER_FREE_MODE=true for free mode)");
+    }
+    const account = privateKeyToAccount(options.walletKey as `0x${string}`);
+    const paymentResult = createPaymentFetch(options.walletKey as `0x${string}`);
+    payFetch = paymentResult.fetch;
+    walletAddress = account.address;
+    balanceMonitor = new BalanceMonitor(account.address);
+  }
 
   // Build router options (100% local — no external API calls for routing)
-  const routingConfig = mergeRoutingConfig(options.routingConfig);
+  const baseRoutingConfig = isFreeModeActive ? LITELLM_ROUTING_CONFIG : DEFAULT_ROUTING_CONFIG;
+  const routingConfig = mergeRoutingConfig(options.routingConfig, baseRoutingConfig);
   const modelPricing = buildModelPricing();
   const routerOpts: RouterOptions = {
     config: routingConfig,
@@ -717,10 +785,12 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
 
       const response: Record<string, unknown> = {
         status: "ok",
-        wallet: account.address,
+        ...(isFreeModeActive
+          ? { mode: "free", upstream: apiBase }
+          : { wallet: walletAddress }),
       };
 
-      if (full) {
+      if (full && !isFreeModeActive) {
         try {
           const balanceInfo = await balanceMonitor.checkBalance();
           response.balance = balanceInfo.balanceUSD;
@@ -761,7 +831,8 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
 
     // --- Handle /v1/models locally (no upstream call needed) ---
     if (req.url === "/v1/models" && req.method === "GET") {
-      const models = BLOCKRUN_MODELS.filter((m) => m.id !== "blockrun/auto").map((m) => ({
+      const activeModels = getActiveModels();
+      const models = activeModels.filter((m) => m.id !== "blockrun/auto" && m.id !== "auto").map((m) => ({
         id: m.id,
         object: "model",
         created: Math.floor(Date.now() / 1000),
@@ -877,6 +948,7 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
           baseUrl,
           walletAddress: error.wallet,
           balanceMonitor,
+          freeMode: isFreeModeActive,
           close: async () => {
             // No-op: we didn't start this proxy, so we shouldn't close it
           },
@@ -951,8 +1023,9 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
   return {
     port,
     baseUrl,
-    walletAddress: account.address,
+    walletAddress,
     balanceMonitor,
+    freeMode: isFreeModeActive,
     close: () =>
       new Promise<void>((res, rej) => {
         const timeout = setTimeout(() => {
@@ -1106,7 +1179,9 @@ async function proxyRequest(
   const startTime = Date.now();
 
   // Build upstream URL: /v1/chat/completions → https://blockrun.ai/api/v1/chat/completions
-  const upstreamUrl = `${apiBase}${req.url}`;
+  // If apiBase already ends with /v1 (e.g. LiteLLM), avoid doubling the prefix
+  const normalizedBase = apiBase.replace(/\/v1\/?$/, "");
+  const upstreamUrl = `${normalizedBase}${req.url}`;
 
   // Collect request body
   const bodyChunks: Buffer[] = [];
