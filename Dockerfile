@@ -1,5 +1,11 @@
 # ---- Build stage ----
-FROM node:20-alpine AS builder
+# Use full Debian image for building — openclaw's transitive dep
+# node-llama-cpp needs git, make, cmake, g++, and glibc
+FROM node:20-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git cmake g++ make python3 \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
