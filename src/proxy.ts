@@ -140,6 +140,14 @@ function safeWrite(res: ServerResponse, data: string | Buffer): boolean {
 const BALANCE_CHECK_BUFFER = 1.5;
 
 /**
+ * Get the bind host from environment variable or default.
+ * Defaults to 127.0.0.1 for local use; set to 0.0.0.0 for Docker/container use.
+ */
+export function getBindHost(): string {
+  return process.env.CLAWROUTER_BIND_HOST ?? "127.0.0.1";
+}
+
+/**
  * Get the proxy port from environment variable or default.
  */
 export function getProxyPort(): number {
@@ -923,7 +931,7 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
       };
 
       server.once("error", onError);
-      server.listen(listenPort, "127.0.0.1", () => {
+      server.listen(listenPort, getBindHost(), () => {
         server.removeListener("error", onError);
         resolveAttempt();
       });

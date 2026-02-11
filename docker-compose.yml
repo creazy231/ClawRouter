@@ -1,0 +1,31 @@
+# ClawRouter - Docker Compose for Coolify
+#
+# Deploy as "Docker Compose" in Coolify.
+# Set environment variables in Coolify's UI.
+
+services:
+  clawrouter:
+    build: .
+    environment:
+      # Coolify generates a FQDN and proxies traffic to port 8402
+      - SERVICE_FQDN_CLAWROUTER_8402
+
+      # -- Free mode (LiteLLM) --
+      - CLAWROUTER_FREE_MODE=${CLAWROUTER_FREE_MODE:-true}
+      - CLAWROUTER_API_BASE=${CLAWROUTER_API_BASE:?}
+      - CLAWROUTER_API_KEY=${CLAWROUTER_API_KEY:?}
+
+      # -- BlockRun mode (x402 payments) --
+      # Uncomment if using BlockRun instead of free mode
+      # - BLOCKRUN_WALLET_KEY=${BLOCKRUN_WALLET_KEY}
+
+      # -- General --
+      - BLOCKRUN_PROXY_PORT=${BLOCKRUN_PROXY_PORT:-8402}
+      - CLAWROUTER_BIND_HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8402/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
