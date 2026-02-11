@@ -60,58 +60,63 @@ export const LITELLM_MODELS: LiteLLMModel[] = [
   // Smart routing meta-model — proxy replaces with actual model
   // vision: true because several tier models support it (gemini, grok, mistral, kimi-k2-5)
   // reasoning: true so OpenClaw sends thinking params (5/8 models support it; drop_params handles the rest)
+  // Max bounds from Grok 4.1 Fast (2M ctx) and Claude/Gemini (64k output)
   {
     id: "auto",
     name: "ClawRouter Smart Router",
     inputPrice: 0,
     outputPrice: 0,
-    contextWindow: 1_000_000,
+    contextWindow: 2_000_000,
     maxOutput: 65_536,
     vision: true,
     reasoning: true,
   },
 
   // === Llama (Venice AI) ===
+  // Meta: 128k ctx, ~16k output (provider limits vary; model supports up to ~16.4k)
   {
     id: "llama-3.3-70b",
     name: "Llama 3.3 70B",
     inputPrice: 0.7,
     outputPrice: 2.8,
     contextWindow: 131_072,
-    maxOutput: 8_192,
+    maxOutput: 16_384,
   },
 
-  // === Mistral (Venice AI) ===
+  // === Mistral Small 3.1 24B (Venice AI) ===
+  // Multimodal text+image, 128k ctx, native function-calling/JSON
   {
     id: "mistral-31-24b",
     name: "Mistral 31 24B",
     inputPrice: 0.5,
     outputPrice: 2.0,
-    contextWindow: 131_072,
+    contextWindow: 128_000,
     maxOutput: 8_192,
     vision: true,
   },
 
   // === Grok (Venice AI) ===
+  // xAI: 2M ctx, 16k output cap, reasoning + vision, tool-calling optimized
   {
     id: "grok-41-fast",
     name: "Grok 4.1 Fast",
     inputPrice: 0.5,
     outputPrice: 1.25,
-    contextWindow: 131_072,
-    maxOutput: 8_192,
+    contextWindow: 2_000_000,
+    maxOutput: 16_384,
     reasoning: true,
     vision: true,
   },
 
   // === Gemini (Venice AI) ===
+  // Google: 1M ctx, 64k output, multimodal (text/images/audio/video/PDF)
   {
     id: "gemini-3-pro-preview",
     name: "Gemini 3 Pro Preview",
     inputPrice: 2.5,
     outputPrice: 15.0,
     contextWindow: 1_000_000,
-    maxOutput: 65_536,
+    maxOutput: 64_000,
     reasoning: true,
     vision: true,
   },
@@ -130,31 +135,34 @@ export const LITELLM_MODELS: LiteLLMModel[] = [
   },
 
   // === MiniMax (Venice AI) ===
+  // MoE ~230B params, ~196k ctx, text-only, reasoning + agentic
   {
     id: "minimax-m21",
     name: "MiniMax M21",
     inputPrice: 0.4,
     outputPrice: 1.6,
-    contextWindow: 131_072,
-    maxOutput: 16_384,
+    contextWindow: 196_608,
+    maxOutput: 65_536,
     reasoning: true,
     agentic: true, // Code specialist
   },
 
   // === Claude (Venice AI) ===
+  // Anthropic: 200k ctx, 64k output, unified sliding context
   {
     id: "claude-opus-45",
     name: "Claude Opus 4.5",
     inputPrice: 6.0,
     outputPrice: 30.0,
     contextWindow: 200_000,
-    maxOutput: 32_768,
+    maxOutput: 64_000,
     reasoning: true,
     vision: true,
     agentic: true, // Code specialist
   },
 
   // === Uncensored (Venice AI) ===
+  // Dolphin Mistral 24B Venice Edition — minimal content restrictions
   {
     id: "venice-uncensored",
     name: "Venice Uncensored",
