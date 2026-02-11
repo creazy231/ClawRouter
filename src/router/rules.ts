@@ -132,6 +132,66 @@ function scoreAgenticTask(
   };
 }
 
+/**
+ * Score browser interaction indicators.
+ * Returns browserScore (0-1) based on keyword matches:
+ * - 3+ matches = 1.0 (definite browser interaction)
+ * - 2 matches = 0.7 (likely browser interaction)
+ * - 1 match = 0.3 (possible browser interaction)
+ *
+ * Lower thresholds than agentic because browser keywords are more specific.
+ */
+function scoreBrowserInteraction(
+  text: string,
+  keywords: string[],
+): { dimensionScore: DimensionScore; browserScore: number } {
+  let matchCount = 0;
+  const signals: string[] = [];
+
+  for (const keyword of keywords) {
+    if (text.includes(keyword.toLowerCase())) {
+      matchCount++;
+      if (signals.length < 3) {
+        signals.push(keyword);
+      }
+    }
+  }
+
+  if (matchCount >= 3) {
+    return {
+      dimensionScore: {
+        name: "browserInteraction",
+        score: 1.0,
+        signal: `browser (${signals.join(", ")})`,
+      },
+      browserScore: 1.0,
+    };
+  } else if (matchCount >= 2) {
+    return {
+      dimensionScore: {
+        name: "browserInteraction",
+        score: 0.7,
+        signal: `browser (${signals.join(", ")})`,
+      },
+      browserScore: 0.7,
+    };
+  } else if (matchCount >= 1) {
+    return {
+      dimensionScore: {
+        name: "browserInteraction",
+        score: 0.3,
+        signal: `browser-hint (${signals.join(", ")})`,
+      },
+      browserScore: 0.3,
+    };
+  }
+
+  return {
+    dimensionScore: { name: "browserInteraction", score: 0, signal: null },
+    browserScore: 0,
+  };
+}
+
 // ─── Main Classifier ───
 
 export function classifyByRules(
@@ -248,6 +308,11 @@ export function classifyByRules(
   dimensions.push(agenticResult.dimensionScore);
   const agenticScore = agenticResult.agenticScore;
 
+  // Score browser interaction indicators
+  const browserResult = scoreBrowserInteraction(text, config.browserInteractionKeywords);
+  dimensions.push(browserResult.dimensionScore);
+  const browserScore = browserResult.browserScore;
+
   // Collect signals
   const signals = dimensions.filter((d) => d.signal !== null).map((d) => d.signal!);
 
@@ -277,6 +342,7 @@ export function classifyByRules(
       confidence: Math.max(confidence, 0.85),
       signals,
       agenticScore,
+      browserScore,
     };
   }
 
@@ -307,10 +373,10 @@ export function classifyByRules(
 
   // If confidence is below threshold → ambiguous
   if (confidence < config.confidenceThreshold) {
-    return { score: weightedScore, tier: null, confidence, signals, agenticScore };
+    return { score: weightedScore, tier: null, confidence, signals, agenticScore, browserScore };
   }
 
-  return { score: weightedScore, tier, confidence, signals, agenticScore };
+  return { score: weightedScore, tier, confidence, signals, agenticScore, browserScore };
 }
 
 /**

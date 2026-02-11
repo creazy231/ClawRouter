@@ -13,6 +13,8 @@ import { selectModel, type ModelPricing } from "./selector.js";
 export type RouterOptions = {
   config: RoutingConfig;
   modelPricing: Map<string, ModelPricing>;
+  /** Set to true when browser interaction tools are detected in the request */
+  hasBrowserTools?: boolean;
 };
 
 /**
@@ -39,6 +41,15 @@ export function route(
   // --- Rule-based classification (runs first to get agenticScore) ---
   const ruleResult = classifyByRules(prompt, systemPrompt, estimatedTokens, config.scoring);
 
+  // Determine if browser tiers should be used:
+  // 1. Browser tools detected in request (hasBrowserTools) OR
+  // 2. Auto-detected browser interaction (browserScore >= 0.6)
+  const browserScore = ruleResult.browserScore ?? 0;
+  const isAutoBrowser = browserScore >= 0.6;
+  const hasExplicitBrowserTools = options.hasBrowserTools ?? false;
+  const useBrowserTiers =
+    (isAutoBrowser || hasExplicitBrowserTools) && config.browserTiers != null;
+
   // Determine if agentic tiers should be used:
   // 1. Explicit agenticMode config OR
   // 2. Auto-detected agentic task (agenticScore >= 0.69)
@@ -46,7 +57,13 @@ export function route(
   const isAutoAgentic = agenticScore >= 0.69;
   const isExplicitAgentic = config.overrides.agenticMode ?? false;
   const useAgenticTiers = (isAutoAgentic || isExplicitAgentic) && config.agenticTiers != null;
-  const tierConfigs = useAgenticTiers ? config.agenticTiers! : config.tiers;
+
+  // Browser tiers take priority over agentic tiers (browser work needs vision-capable models)
+  const tierConfigs = useBrowserTiers
+    ? config.browserTiers!
+    : useAgenticTiers
+      ? config.agenticTiers!
+      : config.tiers;
 
   // --- Override: large context → force COMPLEX ---
   if (estimatedTokens > config.overrides.maxTokensForceComplex) {
@@ -90,8 +107,10 @@ export function route(
     }
   }
 
-  // Add agentic mode indicator to reasoning
-  if (isAutoAgentic) {
+  // Add browser/agentic mode indicators to reasoning
+  if (useBrowserTiers) {
+    reasoning += hasExplicitBrowserTools ? " | browser-tools" : " | auto-browser";
+  } else if (isAutoAgentic) {
     reasoning += " | auto-agentic";
   } else if (isExplicitAgentic) {
     reasoning += " | agentic";

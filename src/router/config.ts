@@ -602,14 +602,44 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       "验证",
     ],
 
+    // Browser interaction detection keywords — UI testing, web automation, page interaction
+    browserInteractionKeywords: [
+      // Navigation & page ops
+      "navigate to", "open url", "go to page", "visit site", "load page",
+      "reload page", "go back", "go forward",
+      // Element interaction
+      "click button", "click on", "click the", "double click",
+      "hover over", "scroll down", "scroll up", "scroll to",
+      "fill form", "fill in", "type into", "select option", "check checkbox",
+      "submit form", "press enter",
+      // Visual & DOM inspection
+      "screenshot", "take screenshot", "page snapshot", "inspect element",
+      "check element", "find element", "wait for element",
+      "visible on page", "appears on screen", "displayed on",
+      // Browser-specific terms
+      "browser", "web page", "webpage", "website", "dom", "html element",
+      "css selector", "xpath", "iframe",
+      // Testing & automation
+      "browser test", "e2e test", "end-to-end", "ui test", "visual test",
+      "playwright", "puppeteer", "selenium", "cypress",
+      "browser automation", "web automation", "web scraping",
+      // Computer use / MCP browser
+      "computer use", "browser_navigate", "browser_click", "browser_type",
+      "browser_snapshot", "browser_scroll", "browser_fill",
+      // Chinese
+      "浏览器", "网页", "点击", "截图", "滚动", "填写表单", "导航到",
+      // German
+      "browser", "webseite", "klicken", "bildschirmfoto", "scrollen", "formular ausfüllen",
+    ],
+
     // Dimension weights (sum to 1.0)
     dimensionWeights: {
       tokenCount: 0.08,
-      codePresence: 0.15,
-      reasoningMarkers: 0.18,
+      codePresence: 0.14,
+      reasoningMarkers: 0.17,
       technicalTerms: 0.1,
       creativeMarkers: 0.05,
-      simpleIndicators: 0.02, // Reduced from 0.12 to make room for agenticTask
+      simpleIndicators: 0.02,
       multiStepPatterns: 0.12,
       questionComplexity: 0.05,
       imperativeVerbs: 0.03,
@@ -618,7 +648,8 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       referenceComplexity: 0.02,
       negationComplexity: 0.01,
       domainSpecificity: 0.02,
-      agenticTask: 0.04, // Reduced - agentic signals influence tier selection, not dominate it
+      agenticTask: 0.04,
+      browserInteraction: 0.08, // Browser tasks need capable models — weighted meaningfully
     },
 
     // Tier boundaries on weighted score axis
@@ -674,6 +705,26 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
     REASONING: {
       primary: "anthropic/claude-sonnet-4", // Strong tool use + reasoning for agentic tasks
       fallback: ["xai/grok-4-fast-reasoning", "moonshot/kimi-k2.5", "deepseek/deepseek-reasoner"],
+    },
+  },
+
+  // Browser tiers — vision-capable models for UI/browser interaction tasks
+  browserTiers: {
+    SIMPLE: {
+      primary: "google/gemini-2.5-flash", // Vision + fast + cheap
+      fallback: ["xai/grok-4-fast-non-reasoning", "openai/gpt-4o-mini", "deepseek/deepseek-chat"],
+    },
+    MEDIUM: {
+      primary: "google/gemini-2.5-pro", // Vision + strong reasoning
+      fallback: ["anthropic/claude-sonnet-4", "xai/grok-4-0709", "openai/gpt-4o"],
+    },
+    COMPLEX: {
+      primary: "anthropic/claude-sonnet-4", // Best vision + tool use for complex UI tasks
+      fallback: ["anthropic/claude-opus-4", "google/gemini-2.5-pro", "xai/grok-4-0709"],
+    },
+    REASONING: {
+      primary: "anthropic/claude-opus-4", // Strongest reasoning + vision for browser debugging
+      fallback: ["anthropic/claude-sonnet-4", "google/gemini-2.5-pro", "xai/grok-4-fast-reasoning"],
     },
   },
 

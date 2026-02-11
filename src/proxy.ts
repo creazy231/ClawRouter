@@ -1285,11 +1285,35 @@ async function proxyRequest(
           const tools = parsed.tools as unknown[] | undefined;
           const hasTools = Array.isArray(tools) && tools.length > 0;
 
+          // Detect browser interaction tools (browser_*, computer_use, etc.)
+          // When present, router switches to browserTiers with vision-capable models
+          let hasBrowserTools = false;
           if (hasTools) {
-            console.log(`[ClawRouter] Tools detected (${tools.length}), agentic mode via keywords`);
+            const toolNames = (tools as Array<{ function?: { name?: string }; name?: string }>)
+              .map((t) => t.function?.name ?? t.name ?? "")
+              .filter(Boolean);
+            hasBrowserTools = toolNames.some(
+              (name) =>
+                name.startsWith("browser_") ||
+                name.startsWith("computer_") ||
+                name.startsWith("mcp_browser") ||
+                name === "computer_use" ||
+                name === "screenshot" ||
+                name === "web_search",
+            );
+            if (hasBrowserTools) {
+              console.log(`[ClawRouter] Browser tools detected, using browser tiers`);
+            } else {
+              console.log(`[ClawRouter] Tools detected (${tools.length}), agentic mode via keywords`);
+            }
           }
 
-          routingDecision = route(prompt, systemPrompt, maxTokens, routerOpts);
+          // Pass browser tool flag to router for tier selection
+          const requestRouterOpts = hasBrowserTools
+            ? { ...routerOpts, hasBrowserTools: true }
+            : routerOpts;
+
+          routingDecision = route(prompt, systemPrompt, maxTokens, requestRouterOpts);
 
           // Replace model in body
           parsed.model = routingDecision.model;
@@ -1465,12 +1489,18 @@ async function proxyRequest(
       const estimatedInputTokens = Math.ceil(body.length / 4);
       const estimatedTotalTokens = estimatedInputTokens + maxTokens;
 
-      // Get tier configs (use agentic tiers if routing decided to use them)
+      // Get tier configs (browser > agentic > standard, matching router priority)
+      const useBrowserTiers =
+        routingDecision.reasoning?.includes("browser") && routerOpts.config.browserTiers;
       const useAgenticTiers =
-        routingDecision.reasoning?.includes("agentic") && routerOpts.config.agenticTiers;
-      const tierConfigs = useAgenticTiers
-        ? routerOpts.config.agenticTiers!
-        : routerOpts.config.tiers;
+        !useBrowserTiers &&
+        routingDecision.reasoning?.includes("agentic") &&
+        routerOpts.config.agenticTiers;
+      const tierConfigs = useBrowserTiers
+        ? routerOpts.config.browserTiers!
+        : useAgenticTiers
+          ? routerOpts.config.agenticTiers!
+          : routerOpts.config.tiers;
 
       // Get full chain first, then filter by context
       const fullChain = getFallbackChain(routingDecision.tier, tierConfigs);

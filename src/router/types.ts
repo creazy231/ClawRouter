@@ -16,6 +16,7 @@ export type ScoringResult = {
   confidence: number; // sigmoid-calibrated [0, 1]
   signals: string[];
   agenticScore?: number; // 0-1 agentic task score for auto-switching to agentic tiers
+  browserScore?: number; // 0-1 browser interaction score for auto-switching to browser tiers
 };
 
 export type RoutingDecision = {
@@ -50,6 +51,8 @@ export type ScoringConfig = {
   domainSpecificKeywords: string[];
   // Agentic task detection keywords
   agenticTaskKeywords: string[];
+  // Browser interaction detection keywords
+  browserInteractionKeywords: string[];
   // Weighted scoring parameters
   dimensionWeights: Record<string, number>;
   tierBoundaries: {
@@ -88,5 +91,7 @@ export type RoutingConfig = {
   tiers: Record<Tier, TierConfig>;
   /** Tier configs for agentic mode - models that excel at multi-step tasks */
   agenticTiers?: Record<Tier, TierConfig>;
+  /** Tier configs for browser interaction - vision-capable, higher-quality models */
+  browserTiers?: Record<Tier, TierConfig>;
   overrides: OverridesConfig;
 };
