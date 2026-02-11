@@ -432,42 +432,44 @@ export const LITELLM_ROUTING_CONFIG: RoutingConfig = {
   },
 
   // Standard tiers — cost-optimized model selection
+  // Benchmark ref: SWE-bench Verified (Feb 2026)
   tiers: {
     SIMPLE: {
       primary: "qwen3-235b-a22b-instruct-2507", // $0.15/$0.75 — cheapest
-      fallback: ["venice-uncensored", "deepseek-v3.2", "minimax-m21"],
+      fallback: ["deepseek-v3.2", "venice-uncensored", "minimax-m21"],
     },
     MEDIUM: {
-      primary: "grok-41-fast", // $0.50/$1.25 — reasoning + vision
-      fallback: ["mistral-31-24b", "deepseek-v3.2", "minimax-m21"],
+      primary: "deepseek-v3.2", // $0.40/$1.00 — ~73% SWE-bench, best token/value
+      fallback: ["grok-41-fast", "minimax-m21", "mistral-31-24b"],
     },
     COMPLEX: {
-      primary: "kimi-k2-5", // $0.75/$3.75 — reasoning + vision + code + 256k ctx
-      fallback: ["gemini-3-pro-preview", "claude-opus-45", "qwen3-coder-480b-a35b-instruct"],
+      primary: "gemini-3-pro-preview", // $2.50/$15.00 — 76.2% SWE-bench, 1M ctx, reasoning+vision
+      fallback: ["claude-opus-45", "kimi-k2-5", "qwen3-coder-480b-a35b-instruct"],
     },
     REASONING: {
-      primary: "qwen3-235b-a22b-thinking-2507", // $0.45/$3.50 — cheapest reasoning
-      fallback: ["deepseek-v3.2", "kimi-k2-thinking", "grok-41-fast"],
+      primary: "qwen3-235b-a22b-thinking-2507", // $0.45/$3.50 — cheapest thinking model
+      fallback: ["kimi-k2-thinking", "deepseek-v3.2", "grok-41-fast"],
     },
   },
 
   // Agentic tiers — code/tool-use optimized
+  // Opus 4.5 is #1 coder (80.9% SWE-bench) but $6/$30 — first fallback for COMPLEX
   agenticTiers: {
     SIMPLE: {
       primary: "qwen3-235b-a22b-instruct-2507",
-      fallback: ["minimax-m21", "llama-3.3-70b", "deepseek-v3.2"],
+      fallback: ["deepseek-v3.2", "minimax-m21", "llama-3.3-70b"],
     },
     MEDIUM: {
-      primary: "qwen3-coder-480b-a35b-instruct", // Code specialist
-      fallback: ["minimax-m21", "kimi-k2-thinking", "grok-41-fast"],
+      primary: "deepseek-v3.2", // $0.40/$1.00 — ~73% SWE-bench, better+cheaper than Qwen Coder (70.6%)
+      fallback: ["qwen3-coder-480b-a35b-instruct", "minimax-m21", "grok-41-fast"],
     },
     COMPLEX: {
-      primary: "kimi-k2-5",
-      fallback: ["claude-opus-45", "gemini-3-pro-preview", "qwen3-coder-480b-a35b-instruct"],
+      primary: "gemini-3-pro-preview", // $2.50/$15.00 — 76.2% SWE-bench, best value in high tier
+      fallback: ["claude-opus-45", "qwen3-coder-480b-a35b-instruct", "kimi-k2-5"],
     },
     REASONING: {
-      primary: "kimi-k2-thinking", // Reasoning + code
-      fallback: ["qwen3-235b-a22b-thinking-2507", "deepseek-v3.2", "kimi-k2-5"],
+      primary: "kimi-k2-thinking", // Reasoning + code specialist
+      fallback: ["qwen3-235b-a22b-thinking-2507", "deepseek-v3.2", "grok-41-fast"],
     },
   },
 
