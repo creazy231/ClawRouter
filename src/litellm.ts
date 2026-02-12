@@ -58,22 +58,122 @@ type LiteLLMModel = {
  */
 export const LITELLM_MODELS: LiteLLMModel[] = [
   // Smart routing meta-model — proxy replaces with actual model
-  // vision: true because several tier models support it (gemini, grok, mistral, kimi-k2-5)
-  // reasoning: true so OpenClaw sends thinking params (5/8 models support it; drop_params handles the rest)
-  // Max bounds from Grok 4.1 Fast (2M ctx) and Claude/Gemini (64k output)
+  // vision: true because many tier models support it (gemini, grok, mistral, kimi, claude, qwen-vl)
+  // reasoning: true so OpenClaw sends thinking params (most models support it; drop_params handles the rest)
+  // Max bounds from Gemini 3 Pro / Claude Opus 4.6 (1M ctx) and Gemini (65k output)
   {
     id: "auto",
     name: "ClawRouter Smart Router",
     inputPrice: 0,
     outputPrice: 0,
-    contextWindow: 2_000_000,
+    contextWindow: 1_000_000,
     maxOutput: 65_536,
     vision: true,
     reasoning: true,
   },
 
-  // === Llama (Venice AI) ===
-  // Meta: 128k ctx, ~16k output (provider limits vary; model supports up to ~16.4k)
+  // ============================================
+  // COMPUT3 AI MODELS
+  // ============================================
+
+  // Hermes 4 70B — ultra-cheap general-purpose, function calling
+  {
+    id: "hermes4:70b",
+    name: "Hermes 4 70B",
+    inputPrice: 0.05,
+    outputPrice: 0.2,
+    contextWindow: 131_072,
+    maxOutput: 16_384,
+  },
+
+  // ============================================
+  // VENICE AI — QWEN MODELS
+  // ============================================
+
+  // Qwen3 235B Instruct — large MoE, cheap for its size
+  {
+    id: "qwen3-235b-a22b-instruct-2507",
+    name: "Qwen3 235B Instruct",
+    inputPrice: 0.15,
+    outputPrice: 0.75,
+    contextWindow: 131_072,
+    maxOutput: 32_768,
+  },
+
+  // Qwen3 235B Thinking — reasoning variant of 235B
+  {
+    id: "qwen3-235b-a22b-thinking-2507",
+    name: "Qwen3 235B Thinking",
+    inputPrice: 0.45,
+    outputPrice: 3.5,
+    contextWindow: 131_072,
+    maxOutput: 32_768,
+    reasoning: true,
+  },
+
+  // Qwen3 Coder 480B — largest code-specialist MoE
+  {
+    id: "qwen3-coder-480b-a35b-instruct",
+    name: "Qwen3 Coder 480B",
+    inputPrice: 0.75,
+    outputPrice: 3.0,
+    contextWindow: 131_072,
+    maxOutput: 32_768,
+    agentic: true, // Code specialist
+  },
+
+  // Qwen3 4B — ultra-cheap tiny model with reasoning
+  {
+    id: "qwen3-4b",
+    name: "Qwen3 4B",
+    inputPrice: 0.05,
+    outputPrice: 0.15,
+    contextWindow: 32_000,
+    maxOutput: 32_768,
+    reasoning: true,
+  },
+
+  // Qwen3 Next 80B — 256k context, solid mid-range
+  {
+    id: "qwen3-next-80b",
+    name: "Qwen3 Next 80B",
+    inputPrice: 0.35,
+    outputPrice: 1.9,
+    contextWindow: 256_000,
+    maxOutput: 32_768,
+  },
+
+  // Qwen3 VL 235B — vision-language model, 256k context
+  {
+    id: "qwen3-vl-235b-a22b",
+    name: "Qwen3 VL 235B",
+    inputPrice: 0.25,
+    outputPrice: 1.5,
+    contextWindow: 256_000,
+    maxOutput: 32_768,
+    vision: true,
+  },
+
+  // ============================================
+  // VENICE AI — DEEPSEEK MODELS
+  // ============================================
+
+  // DeepSeek V3.2 — strong reasoning, competitive pricing
+  {
+    id: "deepseek-v3.2",
+    name: "DeepSeek V3.2",
+    inputPrice: 0.4,
+    outputPrice: 1.0,
+    contextWindow: 131_072,
+    maxOutput: 16_384,
+    reasoning: true,
+  },
+
+  // ============================================
+  // VENICE AI — LLAMA MODELS
+  // ============================================
+
+  // Llama 3.3 70B — Meta's workhorse, function calling
   {
     id: "llama-3.3-70b",
     name: "Llama 3.3 70B",
@@ -83,45 +183,114 @@ export const LITELLM_MODELS: LiteLLMModel[] = [
     maxOutput: 16_384,
   },
 
-  // === Mistral Small 3.1 24B (Venice AI) ===
-  // Multimodal text+image, 128k ctx, native function-calling/JSON
+  // Llama 3.2 3B — ultra-lightweight, good for trivial tasks
+  {
+    id: "llama-3.2-3b",
+    name: "Llama 3.2 3B",
+    inputPrice: 0.15,
+    outputPrice: 0.6,
+    contextWindow: 128_000,
+    maxOutput: 16_384,
+  },
+
+  // Hermes 3 Llama 405B — largest Llama variant, no function calling
+  {
+    id: "hermes-3-llama-3.1-405b",
+    name: "Hermes 3 Llama 405B",
+    inputPrice: 1.1,
+    outputPrice: 3.0,
+    contextWindow: 128_000,
+    maxOutput: 16_384,
+  },
+
+  // ============================================
+  // VENICE AI — MISTRAL MODELS
+  // ============================================
+
+  // Mistral Small 3.1 24B — multimodal text+image, function calling
   {
     id: "mistral-31-24b",
     name: "Mistral 31 24B",
     inputPrice: 0.5,
     outputPrice: 2.0,
-    contextWindow: 128_000,
-    maxOutput: 8_192,
+    contextWindow: 131_072,
+    maxOutput: 16_384,
     vision: true,
   },
 
-  // === Grok (Venice AI) ===
-  // xAI: 2M ctx, 16k output cap, reasoning + vision, tool-calling optimized
+  // ============================================
+  // VENICE AI — GROK MODELS
+  // ============================================
+
+  // Grok 4.1 Fast — reasoning + vision, tool-calling optimized
   {
     id: "grok-41-fast",
     name: "Grok 4.1 Fast",
     inputPrice: 0.5,
     outputPrice: 1.25,
-    contextWindow: 2_000_000,
-    maxOutput: 16_384,
+    contextWindow: 131_072,
+    maxOutput: 32_768,
     reasoning: true,
     vision: true,
   },
 
-  // === Gemini (Venice AI) ===
-  // Google: 1M ctx, 64k output, multimodal (text/images/audio/video/PDF)
+  // Grok Code Fast 1 — code-optimized reasoning, 256k context
+  {
+    id: "grok-code-fast-1",
+    name: "Grok Code Fast 1",
+    inputPrice: 0.25,
+    outputPrice: 1.87,
+    contextWindow: 256_000,
+    maxOutput: 32_768,
+    reasoning: true,
+    agentic: true, // Code specialist
+  },
+
+  // ============================================
+  // VENICE AI — GEMINI MODELS
+  // ============================================
+
+  // Gemini 3 Pro — Google's flagship, 1M ctx, multimodal
   {
     id: "gemini-3-pro-preview",
     name: "Gemini 3 Pro Preview",
     inputPrice: 2.5,
     outputPrice: 15.0,
     contextWindow: 1_000_000,
-    maxOutput: 64_000,
+    maxOutput: 65_536,
     reasoning: true,
     vision: true,
   },
 
-  // === Kimi / Moonshot (Venice AI) ===
+  // Gemini 3 Flash — faster/cheaper Gemini, 256k ctx, multimodal
+  {
+    id: "gemini-3-flash-preview",
+    name: "Gemini 3 Flash Preview",
+    inputPrice: 0.7,
+    outputPrice: 3.75,
+    contextWindow: 256_000,
+    maxOutput: 65_536,
+    reasoning: true,
+    vision: true,
+  },
+
+  // ============================================
+  // VENICE AI — KIMI MODELS
+  // ============================================
+
+  // Kimi K2 Thinking — reasoning + code specialist
+  {
+    id: "kimi-k2-thinking",
+    name: "Kimi K2 Thinking",
+    inputPrice: 0.75,
+    outputPrice: 3.2,
+    contextWindow: 131_072,
+    maxOutput: 32_768,
+    reasoning: true,
+    agentic: true, // Code specialist
+  },
+
+  // Kimi K2.5 — reasoning + vision + code, 256k context
   {
     id: "kimi-k2-5",
     name: "Kimi K2.5",
@@ -134,34 +303,160 @@ export const LITELLM_MODELS: LiteLLMModel[] = [
     agentic: true, // Code specialist
   },
 
-  // === MiniMax (Venice AI) ===
-  // MoE ~230B params, ~196k ctx, text-only, reasoning + agentic
+  // ============================================
+  // VENICE AI — MINIMAX MODELS
+  // ============================================
+
+  // MiniMax M21 — MoE, reasoning + code
   {
     id: "minimax-m21",
     name: "MiniMax M21",
     inputPrice: 0.4,
     outputPrice: 1.6,
-    contextWindow: 196_608,
-    maxOutput: 65_536,
+    contextWindow: 131_072,
+    maxOutput: 32_768,
     reasoning: true,
     agentic: true, // Code specialist
   },
 
-  // === Claude (Venice AI) ===
-  // Anthropic: 200k ctx, 64k output, unified sliding context
+  // ============================================
+  // VENICE AI — CLAUDE MODELS
+  // ============================================
+
+  // Claude Opus 4.5 — Anthropic's prior flagship, 200k ctx
   {
     id: "claude-opus-45",
     name: "Claude Opus 4.5",
     inputPrice: 6.0,
     outputPrice: 30.0,
     contextWindow: 200_000,
-    maxOutput: 64_000,
+    maxOutput: 32_768,
     reasoning: true,
     vision: true,
     agentic: true, // Code specialist
   },
 
-  // === Uncensored (Venice AI) ===
+  // Claude Opus 4.6 — latest Anthropic flagship, 1M ctx
+  {
+    id: "claude-opus-4-6",
+    name: "Claude Opus 4.6",
+    inputPrice: 6.0,
+    outputPrice: 30.0,
+    contextWindow: 1_000_000,
+    maxOutput: 32_768,
+    reasoning: true,
+    vision: true,
+    agentic: true, // Code specialist
+  },
+
+  // Claude Sonnet 4.5 — strong mid-tier Claude, vision + code
+  {
+    id: "claude-sonnet-45",
+    name: "Claude Sonnet 4.5",
+    inputPrice: 3.75,
+    outputPrice: 18.75,
+    contextWindow: 198_000,
+    maxOutput: 32_768,
+    reasoning: true,
+    vision: true,
+    agentic: true, // Code specialist
+  },
+
+  // ============================================
+  // VENICE AI — GLM MODELS
+  // ============================================
+
+  // GLM 4.7 — ZhipuAI reasoning model, 198k ctx
+  {
+    id: "zai-org-glm-4.7",
+    name: "GLM 4.7",
+    inputPrice: 0.55,
+    outputPrice: 2.65,
+    contextWindow: 198_000,
+    maxOutput: 32_768,
+    reasoning: true,
+  },
+
+  // GLM 4.7 Flash — cheap fast ZhipuAI reasoning
+  {
+    id: "zai-org-glm-4.7-flash",
+    name: "GLM 4.7 Flash",
+    inputPrice: 0.125,
+    outputPrice: 0.5,
+    contextWindow: 128_000,
+    maxOutput: 16_384,
+    reasoning: true,
+  },
+
+  // GLM 5 — latest ZhipuAI, reasoning + code
+  {
+    id: "zai-org-glm-5",
+    name: "GLM 5",
+    inputPrice: 1.0,
+    outputPrice: 3.2,
+    contextWindow: 198_000,
+    maxOutput: 32_768,
+    reasoning: true,
+    agentic: true, // Code specialist
+  },
+
+  // ============================================
+  // VENICE AI — GOOGLE GEMMA MODELS
+  // ============================================
+
+  // Gemma 3 27B — lightweight Google model, vision capable
+  {
+    id: "google-gemma-3-27b-it",
+    name: "Gemma 3 27B",
+    inputPrice: 0.12,
+    outputPrice: 0.2,
+    contextWindow: 198_000,
+    maxOutput: 8_192,
+    vision: true,
+  },
+
+  // ============================================
+  // VENICE AI — OPENAI MODELS
+  // ============================================
+
+  // GPT OSS 120B — cheap OpenAI open-source model
+  {
+    id: "openai-gpt-oss-120b",
+    name: "GPT OSS 120B",
+    inputPrice: 0.07,
+    outputPrice: 0.3,
+    contextWindow: 128_000,
+    maxOutput: 16_384,
+  },
+
+  // GPT 5.2 — OpenAI reasoning flagship, 256k ctx
+  {
+    id: "openai-gpt-52",
+    name: "GPT 5.2",
+    inputPrice: 2.19,
+    outputPrice: 17.5,
+    contextWindow: 256_000,
+    maxOutput: 32_768,
+    reasoning: true,
+  },
+
+  // GPT 5.2 Codex — OpenAI code + vision + reasoning flagship
+  {
+    id: "openai-gpt-52-codex",
+    name: "GPT 5.2 Codex",
+    inputPrice: 2.19,
+    outputPrice: 17.5,
+    contextWindow: 256_000,
+    maxOutput: 32_768,
+    reasoning: true,
+    vision: true,
+    agentic: true, // Code specialist
+  },
+
+  // ============================================
+  // VENICE AI — UNCENSORED MODELS
+  // ============================================
+
   // Dolphin Mistral 24B Venice Edition — minimal content restrictions
   {
     id: "venice-uncensored",
@@ -178,33 +473,76 @@ export const LITELLM_MODELS: LiteLLMModel[] = [
  * Users can type `/model grok` instead of the full model name.
  */
 export const LITELLM_MODEL_ALIASES: Record<string, string> = {
+  // Comput3
+  hermes: "hermes4:70b",
+
+  // Qwen
+  qwen: "qwen3-235b-a22b-instruct-2507",
+  "qwen-instruct": "qwen3-235b-a22b-instruct-2507",
+  "qwen-thinking": "qwen3-235b-a22b-thinking-2507",
+  "qwen-coder": "qwen3-coder-480b-a35b-instruct",
+  "qwen-4b": "qwen3-4b",
+  "qwen-next": "qwen3-next-80b",
+  "qwen-vl": "qwen3-vl-235b-a22b",
+  "qwen-vision": "qwen3-vl-235b-a22b",
+
+  // DeepSeek
+  deepseek: "deepseek-v3.2",
+
   // Llama
   llama: "llama-3.3-70b",
+  "llama-small": "llama-3.2-3b",
+  "llama-405b": "hermes-3-llama-3.1-405b",
 
   // Mistral
   mistral: "mistral-31-24b",
 
   // Grok
   grok: "grok-41-fast",
+  "grok-code": "grok-code-fast-1",
 
   // Gemini
   gemini: "gemini-3-pro-preview",
+  "gemini-pro": "gemini-3-pro-preview",
+  "gemini-flash": "gemini-3-flash-preview",
 
   // Kimi
   kimi: "kimi-k2-5",
+  "kimi-thinking": "kimi-k2-thinking",
 
   // MiniMax
   minimax: "minimax-m21",
 
   // Claude
-  claude: "claude-opus-45",
-  opus: "claude-opus-45",
+  claude: "claude-opus-4-6",
+  opus: "claude-opus-4-6",
+  "opus-45": "claude-opus-45",
+  "opus-4.5": "claude-opus-45",
+  "opus-4.6": "claude-opus-4-6",
+  sonnet: "claude-sonnet-45",
+  "sonnet-45": "claude-sonnet-45",
+
+  // GLM (ZhipuAI)
+  glm: "zai-org-glm-5",
+  "glm-flash": "zai-org-glm-4.7-flash",
+  "glm-4.7": "zai-org-glm-4.7",
+  "glm-5": "zai-org-glm-5",
+
+  // Gemma
+  gemma: "google-gemma-3-27b-it",
+
+  // OpenAI
+  gpt: "openai-gpt-52",
+  "gpt-oss": "openai-gpt-oss-120b",
+  "gpt-52": "openai-gpt-52",
+  "gpt-codex": "openai-gpt-52-codex",
+  codex: "openai-gpt-52-codex",
 
   // Venice
   uncensored: "venice-uncensored",
 
   // Meta
-  free: "minimax-m21", // Cheapest capable model
+  free: "zai-org-glm-4.7-flash", // Cheapest capable model with reasoning
 };
 
 /**
@@ -406,40 +744,40 @@ export const LITELLM_ROUTING_CONFIG: RoutingConfig = {
   tiers: {
     SIMPLE: {
       primary: "minimax-m21", // $0.40/$1.60 — cheapest with reasoning
-      fallback: ["venice-uncensored", "llama-3.3-70b", "mistral-31-24b"],
+      fallback: ["zai-org-glm-4.7-flash", "deepseek-v3.2", "llama-3.3-70b", "mistral-31-24b"],
     },
     MEDIUM: {
       primary: "grok-41-fast", // $0.50/$1.25 — reasoning + vision
-      fallback: ["minimax-m21", "mistral-31-24b", "llama-3.3-70b"],
+      fallback: ["deepseek-v3.2", "minimax-m21", "qwen3-next-80b", "mistral-31-24b"],
     },
     COMPLEX: {
       primary: "kimi-k2-5", // $0.75/$3.75 — reasoning + vision + code + 256k ctx
-      fallback: ["claude-opus-45", "gemini-3-pro-preview", "minimax-m21"],
+      fallback: ["claude-sonnet-45", "gemini-3-pro-preview", "grok-code-fast-1", "minimax-m21"],
     },
     REASONING: {
-      primary: "claude-opus-45", // $6/$30 — 80.9% SWE-bench, best reasoning
-      fallback: ["grok-41-fast", "kimi-k2-5", "gemini-3-pro-preview"],
+      primary: "claude-opus-4-6", // $6/$30 — 1M ctx, best reasoning + vision + code
+      fallback: ["claude-opus-45", "openai-gpt-52", "kimi-k2-5", "gemini-3-pro-preview"],
     },
   },
 
   // Agentic tiers — code/tool-use optimized
-  // Opus 4.5 is #1 coder (80.9% SWE-bench) but $6/$30 — first fallback for COMPLEX
+  // Opus 4.6 is top-tier coder with 1M ctx — ultimate reasoning fallback
   agenticTiers: {
     SIMPLE: {
       primary: "minimax-m21", // $0.40/$1.60 — cheapest with reasoning + agentic
-      fallback: ["llama-3.3-70b", "grok-41-fast", "mistral-31-24b"],
+      fallback: ["grok-code-fast-1", "llama-3.3-70b", "zai-org-glm-4.7-flash"],
     },
     MEDIUM: {
       primary: "grok-41-fast", // $0.50/$1.25 — reasoning + vision
-      fallback: ["minimax-m21", "mistral-31-24b", "llama-3.3-70b"],
+      fallback: ["grok-code-fast-1", "minimax-m21", "deepseek-v3.2"],
     },
     COMPLEX: {
       primary: "gemini-3-pro-preview", // $2.50/$15.00 — 76.2% SWE-bench, best value in high tier
-      fallback: ["claude-opus-45", "kimi-k2-5", "minimax-m21"],
+      fallback: ["claude-sonnet-45", "kimi-k2-5", "qwen3-coder-480b-a35b-instruct", "minimax-m21"],
     },
     REASONING: {
       primary: "kimi-k2-5", // $0.75/$3.75 — reasoning + agentic + 256k ctx
-      fallback: ["claude-opus-45", "grok-41-fast", "gemini-3-pro-preview"],
+      fallback: ["claude-opus-4-6", "claude-opus-45", "grok-code-fast-1", "gemini-3-pro-preview"],
     },
   },
 
@@ -448,19 +786,19 @@ export const LITELLM_ROUTING_CONFIG: RoutingConfig = {
   browserTiers: {
     SIMPLE: {
       primary: "grok-41-fast", // $0.50/$1.25 — vision + reasoning, fast
-      fallback: ["mistral-31-24b", "kimi-k2-5", "minimax-m21"],
+      fallback: ["gemini-3-flash-preview", "mistral-31-24b", "kimi-k2-5"],
     },
     MEDIUM: {
       primary: "kimi-k2-5", // $0.75/$3.75 — vision + reasoning + agentic + 256k ctx
-      fallback: ["grok-41-fast", "gemini-3-pro-preview", "minimax-m21"],
+      fallback: ["gemini-3-flash-preview", "grok-41-fast", "claude-sonnet-45"],
     },
     COMPLEX: {
       primary: "gemini-3-pro-preview", // $2.50/$15.00 — vision + reasoning + 1M ctx
-      fallback: ["claude-opus-45", "kimi-k2-5", "grok-41-fast"],
+      fallback: ["claude-sonnet-45", "claude-opus-4-6", "kimi-k2-5"],
     },
     REASONING: {
-      primary: "claude-opus-45", // $6/$30 — best vision + reasoning for browser debugging
-      fallback: ["gemini-3-pro-preview", "kimi-k2-5", "grok-41-fast"],
+      primary: "claude-opus-4-6", // $6/$30 — 1M ctx, best vision + reasoning for browser debugging
+      fallback: ["claude-opus-45", "gemini-3-pro-preview", "kimi-k2-5", "gemini-3-flash-preview"],
     },
   },
 
