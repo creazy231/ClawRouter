@@ -244,12 +244,31 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
     { id: "flash", alias: "flash" },
   ];
 
+  // Deprecated aliases to remove from config (cleaned up from picker)
+  const DEPRECATED_ALIASES = [
+    "blockrun/nvidia",
+    "blockrun/gpt",
+    "blockrun/o3",
+    "blockrun/grok",
+  ];
+
   if (!defaults.models) {
     defaults.models = {};
     needsWrite = true;
   }
 
   const allowlist = defaults.models as Record<string, unknown>;
+
+  // Remove deprecated aliases from config
+  for (const deprecated of DEPRECATED_ALIASES) {
+    if (allowlist[deprecated]) {
+      delete allowlist[deprecated];
+      logger.info(`Removed deprecated model alias: ${deprecated}`);
+      needsWrite = true;
+    }
+  }
+
+  // Add current aliases
   for (const m of KEY_MODEL_ALIASES) {
     const fullId = `blockrun/${m.id}`;
     if (!allowlist[fullId]) {

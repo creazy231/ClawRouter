@@ -636,13 +636,11 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   // Auto (balanced) tier configs - current default smart routing
   tiers: {
     SIMPLE: {
-      primary: "nvidia/kimi-k2.5", // Ultra-cheap $0.001/$0.001
+      primary: "nvidia/kimi-k2.5", // $0.55/$2.5 - best quality/price for simple tasks
       fallback: [
+        "nvidia/gpt-oss-120b", // FREE fallback
         "google/gemini-2.5-flash",
-        "nvidia/gpt-oss-120b",
-        "nvidia/gpt-oss-20b",
         "deepseek/deepseek-chat",
-        "xai/grok-code-fast-1", // Added for better quality fallback
       ],
     },
     MEDIUM: {
@@ -678,8 +676,8 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   // Eco tier configs - ultra cost-optimized (blockrun/eco)
   ecoTiers: {
     SIMPLE: {
-      primary: "nvidia/kimi-k2.5", // $0.001/$0.001
-      fallback: ["deepseek/deepseek-chat", "nvidia/gpt-oss-120b", "nvidia/gpt-oss-20b"],
+      primary: "nvidia/kimi-k2.5", // $0.55/$2.5
+      fallback: ["nvidia/gpt-oss-120b", "deepseek/deepseek-chat", "google/gemini-2.5-flash"],
     },
     MEDIUM: {
       primary: "deepseek/deepseek-chat", // $0.14/$0.28

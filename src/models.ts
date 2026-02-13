@@ -47,7 +47,6 @@ export const MODEL_ALIASES: Record<string, string> = {
   // NVIDIA
   nvidia: "nvidia/gpt-oss-120b",
   "gpt-120b": "nvidia/gpt-oss-120b",
-  "gpt-20b": "nvidia/gpt-oss-20b",
 
   // Note: auto, free, eco, premium are virtual routing profiles registered in BLOCKRUN_MODELS
   // They don't need aliases since they're already top-level model IDs
@@ -177,14 +176,7 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     contextWindow: 128000,
     maxOutput: 16384,
   },
-  {
-    id: "openai/gpt-4.1-nano",
-    name: "GPT-4.1 Nano",
-    inputPrice: 0.1,
-    outputPrice: 0.4,
-    contextWindow: 128000,
-    maxOutput: 16384,
-  },
+  // gpt-4.1-nano removed - replaced by gpt-5-nano
   {
     id: "openai/gpt-4o",
     name: "GPT-4o",
@@ -204,25 +196,7 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     maxOutput: 16384,
   },
 
-  // OpenAI O-series (Reasoning)
-  {
-    id: "openai/o1",
-    name: "o1",
-    inputPrice: 15.0,
-    outputPrice: 60.0,
-    contextWindow: 200000,
-    maxOutput: 100000,
-    reasoning: true,
-  },
-  {
-    id: "openai/o1-mini",
-    name: "o1-mini",
-    inputPrice: 1.1,
-    outputPrice: 4.4,
-    contextWindow: 128000,
-    maxOutput: 65536,
-    reasoning: true,
-  },
+  // OpenAI O-series (Reasoning) - o1/o1-mini removed, replaced by o3/o4
   {
     id: "openai/o3",
     name: "o3",
@@ -364,15 +338,7 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     maxOutput: 16384,
     reasoning: true,
   },
-  {
-    id: "xai/grok-3-fast",
-    name: "Grok 3 Fast",
-    inputPrice: 5.0,
-    outputPrice: 25.0,
-    contextWindow: 131072,
-    maxOutput: 16384,
-    reasoning: true,
-  },
+  // grok-3-fast removed - too expensive ($5/$25), use grok-4-fast instead
   {
     id: "xai/grok-3-mini",
     name: "Grok 3 Mini",
@@ -435,15 +401,7 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     maxOutput: 16384,
     reasoning: true,
   },
-  {
-    id: "xai/grok-2-vision",
-    name: "Grok 2 Vision",
-    inputPrice: 2.0,
-    outputPrice: 10.0,
-    contextWindow: 131072,
-    maxOutput: 16384,
-    vision: true,
-  },
+  // grok-2-vision removed - old, 0 transactions
 
   // NVIDIA - Free/cheap models
   {
@@ -455,18 +413,10 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     maxOutput: 16384,
   },
   {
-    id: "nvidia/gpt-oss-20b",
-    name: "NVIDIA GPT-OSS 20B",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 128000,
-    maxOutput: 16384,
-  },
-  {
     id: "nvidia/kimi-k2.5",
     name: "NVIDIA Kimi K2.5",
-    inputPrice: 0.001,
-    outputPrice: 0.001,
+    inputPrice: 0.55,
+    outputPrice: 2.5,
     contextWindow: 262144,
     maxOutput: 16384,
   },
