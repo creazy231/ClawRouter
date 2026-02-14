@@ -37,38 +37,6 @@ function extractPaths(messages: NormalizedMessage[]): string[] {
 }
 
 /**
- * Find the longest common prefix among paths.
- */
-function findCommonPrefix(paths: string[]): string {
-  if (paths.length === 0) return "";
-  if (paths.length === 1) {
-    // Return directory part
-    const parts = paths[0].split("/");
-    parts.pop(); // Remove filename
-    return parts.join("/") + "/";
-  }
-
-  // Find common prefix
-  const sorted = [...paths].sort();
-  const first = sorted[0];
-  const last = sorted[sorted.length - 1];
-
-  let i = 0;
-  while (i < first.length && first[i] === last[i]) {
-    i++;
-  }
-
-  // Ensure we end at a path separator
-  let prefix = first.slice(0, i);
-  const lastSlash = prefix.lastIndexOf("/");
-  if (lastSlash > 0) {
-    prefix = prefix.slice(0, lastSlash + 1);
-  }
-
-  return prefix;
-}
-
-/**
  * Group paths by their common prefixes.
  * Returns prefixes that appear at least 3 times.
  */
@@ -87,7 +55,7 @@ function findFrequentPrefixes(paths: string[]): string[] {
 
   // Return prefixes that appear 3+ times, sorted by length (longest first)
   return Array.from(prefixCounts.entries())
-    .filter(([_, count]) => count >= 3)
+    .filter(([, count]) => count >= 3)
     .sort((a, b) => b[0].length - a[0].length)
     .slice(0, 5) // Max 5 path codes
     .map(([prefix]) => prefix);

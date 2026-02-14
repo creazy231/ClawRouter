@@ -20,7 +20,7 @@ import {
 import { deduplicateMessages } from "./layers/deduplication";
 import { normalizeMessagesWhitespace } from "./layers/whitespace";
 import { encodeMessages } from "./layers/dictionary";
-import { shortenPaths, generatePathMapHeader } from "./layers/paths";
+import { shortenPaths } from "./layers/paths";
 import { compactMessagesJson } from "./layers/json-compact";
 import { compressObservations } from "./layers/observation";
 import { applyDynamicCodebook, generateDynamicCodebookHeader } from "./layers/dynamic-codebook";

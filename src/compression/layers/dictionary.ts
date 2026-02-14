@@ -9,7 +9,7 @@
  */
 
 import { NormalizedMessage } from "../types";
-import { STATIC_CODEBOOK, getInverseCodebook } from "../codebook";
+import { getInverseCodebook } from "../codebook";
 
 export interface DictionaryResult {
   messages: NormalizedMessage[];

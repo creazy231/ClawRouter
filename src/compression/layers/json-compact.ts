@@ -63,7 +63,7 @@ export function compactMessagesJson(messages: NormalizedMessage[]): JsonCompactR
   let charsSaved = 0;
 
   const result = messages.map((message) => {
-    let newMessage = { ...message };
+    const newMessage = { ...message };
 
     // Compact tool_calls arguments
     if (message.tool_calls && message.tool_calls.length > 0) {
