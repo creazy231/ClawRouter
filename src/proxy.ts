@@ -71,6 +71,7 @@ const ROUTING_PROFILES = new Set([
   "premium",
 ]);
 const FREE_MODEL = "nvidia/gpt-oss-120b"; // Free model for empty wallet fallback
+const MAX_MESSAGES = 200; // BlockRun API limit - truncate older messages if exceeded
 const HEARTBEAT_INTERVAL_MS = 2_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 180_000; // 3 minutes (allows for on-chain tx + LLM response)
 const MAX_FALLBACK_ATTEMPTS = 5; // Maximum models to try in fallback chain (increased from 3 to ensure cheap models are tried)
@@ -590,6 +591,28 @@ function normalizeMessagesForThinking(messages: ExtendedChatMessage[]): Extended
   });
 
   return hasChanges ? normalized : messages;
+}
+
+/**
+ * Truncate messages to stay under BlockRun's MAX_MESSAGES limit.
+ * Keeps all system messages and the most recent conversation history.
+ */
+function truncateMessages<T extends { role: string }>(messages: T[]): T[] {
+  if (!messages || messages.length <= MAX_MESSAGES) return messages;
+
+  // Separate system messages from conversation
+  const systemMsgs = messages.filter((m) => m.role === "system");
+  const conversationMsgs = messages.filter((m) => m.role !== "system");
+
+  // Keep all system messages + most recent conversation messages
+  const maxConversation = MAX_MESSAGES - systemMsgs.length;
+  const truncatedConversation = conversationMsgs.slice(-maxConversation);
+
+  console.log(
+    `[ClawRouter] Truncated messages: ${messages.length} → ${systemMsgs.length + truncatedConversation.length} (kept ${systemMsgs.length} system + ${truncatedConversation.length} recent)`,
+  );
+
+  return [...systemMsgs, ...truncatedConversation];
 }
 
 // Kimi/Moonshot models use special Unicode tokens for thinking boundaries.
@@ -1142,6 +1165,11 @@ async function tryModelRequest(
     // Normalize message roles (e.g., "developer" -> "system")
     if (Array.isArray(parsed.messages)) {
       parsed.messages = normalizeMessageRoles(parsed.messages as ChatMessage[]);
+    }
+
+    // Truncate messages to stay under BlockRun's limit (200 messages)
+    if (Array.isArray(parsed.messages)) {
+      parsed.messages = truncateMessages(parsed.messages as ChatMessage[]);
     }
 
     // Sanitize tool IDs to match Anthropic's pattern (alphanumeric, underscore, hyphen only)
