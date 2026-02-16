@@ -39,7 +39,9 @@
     "test:resilience:lifecycle": "npx tsx test/resilience-lifecycle.ts",
     "test:resilience:quick": "npm run test:resilience:errors && npm run test:resilience:lifecycle",
     "test:resilience:full": "npm run test:resilience:errors && npm run test:resilience:lifecycle && npm run test:resilience:stability:full",
-    "test:e2e:tool-ids": "npx tsx test/e2e-tool-id-sanitization.ts"
+    "test:e2e:tool-ids": "npx tsx test/e2e-tool-id-sanitization.ts",
+    "test:docker:install": "bash test/run-docker-test.sh",
+    "test:docker:edge-cases": "bash test/docker/run-edge-cases.sh"
   },
   "keywords": [
     "llm",
