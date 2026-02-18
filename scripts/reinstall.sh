@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "🦞 ClawRouter Reinstall"
 echo ""
 
@@ -158,6 +160,69 @@ if [ ! -f "$DIST_PATH" ]; then
 fi
 echo "  ✓ dist/index.js verified"
 
+# 6.2. Refresh blockrun model catalog from installed package
+echo "→ Refreshing BlockRun models catalog..."
+node --input-type=module -e "
+import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+// Use installed plugin path directly (works with curl | bash)
+const indexPath = path.join(os.homedir(), '.openclaw', 'extensions', 'clawrouter', 'dist', 'index.js');
+
+if (!fs.existsSync(configPath)) {
+  console.log('  No openclaw.json found, skipping');
+  process.exit(0);
+}
+
+if (!fs.existsSync(indexPath)) {
+  console.log('  Could not locate dist/index.js, skipping model refresh');
+  process.exit(0);
+}
+
+try {
+  const mod = await import(pathToFileURL(indexPath).href);
+  const openclawModels = Array.isArray(mod.OPENCLAW_MODELS) ? mod.OPENCLAW_MODELS : [];
+  if (openclawModels.length === 0) {
+    console.log('  OPENCLAW_MODELS missing or empty, skipping model refresh');
+    process.exit(0);
+  }
+
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const blockrun = config.models?.providers?.blockrun;
+  if (!blockrun || typeof blockrun !== 'object') {
+    console.log('  BlockRun provider not found yet, skipping model refresh');
+    process.exit(0);
+  }
+
+  const currentModels = Array.isArray(blockrun.models) ? blockrun.models : [];
+  const currentIds = new Set(currentModels.map(m => m?.id).filter(Boolean));
+  const expectedIds = openclawModels.map(m => m?.id).filter(Boolean);
+  const needsRefresh = currentModels.length !== openclawModels.length || expectedIds.some(id => !currentIds.has(id));
+
+  let changed = false;
+  if (!blockrun.apiKey) {
+    blockrun.apiKey = 'x402-proxy-handles-auth';
+    changed = true;
+  }
+  if (needsRefresh) {
+    blockrun.models = openclawModels;
+    changed = true;
+    console.log('  Refreshed blockrun.models (' + openclawModels.length + ' models)');
+  } else {
+    console.log('  blockrun.models already up to date');
+  }
+
+  if (changed) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  }
+} catch (err) {
+  console.log('  Could not refresh models catalog:', err.message);
+}
+"
+
 # 7. Add plugin to allow list (done AFTER install so plugin files exist for validation)
 echo "→ Adding to plugins allow list..."
 node -e "
@@ -200,6 +265,7 @@ echo "Model aliases available:"
 echo "  /model sonnet    → anthropic/claude-sonnet-4.6"
 echo "  /model codex     → openai/gpt-5.2-codex"
 echo "  /model deepseek  → deepseek/deepseek-chat"
+echo "  /model minimax   → minimax/minimax-m2.5"
 echo "  /model free      → gpt-oss-120b (FREE)"
 echo ""
 echo "To uninstall: bash ~/.openclaw/extensions/clawrouter/scripts/uninstall.sh"
