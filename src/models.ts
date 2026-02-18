@@ -12,7 +12,7 @@ import type { ModelDefinitionConfig, ModelProviderConfig } from "./types.js";
 
 /**
  * Model aliases for convenient shorthand access.
- * Users can type `/model claude` instead of `/model blockrun/anthropic/claude-sonnet-4.6`.
+ * Users can type `/model claude` instead of `/model blockrun/anthropic/claude-sonnet-4-6`.
  */
 export const MODEL_ALIASES: Record<string, string> = {
   // Claude - short names (use dashes in version, not dots - Anthropic API format)
@@ -72,9 +72,9 @@ export const MODEL_ALIASES: Record<string, string> = {
  * Resolve a model alias to its full model ID.
  * Also strips "blockrun/" prefix for direct model paths.
  * Examples:
- *   - "claude" -> "anthropic/claude-sonnet-4.6" (alias)
- *   - "blockrun/claude" -> "anthropic/claude-sonnet-4.6" (alias with prefix)
- *   - "blockrun/anthropic/claude-sonnet-4.6" -> "anthropic/claude-sonnet-4.6" (prefix stripped)
+ *   - "claude" -> "anthropic/claude-sonnet-4-6" (alias)
+ *   - "blockrun/claude" -> "anthropic/claude-sonnet-4-6" (alias with prefix)
+ *   - "blockrun/anthropic/claude-sonnet-4-6" -> "anthropic/claude-sonnet-4-6" (prefix stripped)
  *   - "openai/gpt-4o" -> "openai/gpt-4o" (unchanged)
  */
 export function resolveModelAlias(model: string): string {
@@ -89,7 +89,7 @@ export function resolveModelAlias(model: string): string {
     if (resolvedWithoutPrefix) return resolvedWithoutPrefix;
 
     // Even if not an alias, strip the prefix for direct model paths
-    // e.g., "blockrun/anthropic/claude-sonnet-4.6" -> "anthropic/claude-sonnet-4.6"
+    // e.g., "blockrun/anthropic/claude-sonnet-4-6" -> "anthropic/claude-sonnet-4-6"
     return withoutPrefix;
   }
 

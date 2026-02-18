@@ -12,6 +12,8 @@ export type ModelPricing = {
   outputPrice: number; // per 1M tokens
 };
 
+const BASELINE_MODEL_ID = "anthropic/claude-opus-4-5";
+
 /**
  * Select the primary model for a tier and build the RoutingDecision.
  */
@@ -38,7 +40,7 @@ export function selectModel(
   const costEstimate = inputCost + outputCost;
 
   // Baseline: what Claude Opus 4.5 would cost (the premium reference)
-  const opusPricing = modelPricing.get("anthropic/claude-opus-4.5");
+  const opusPricing = modelPricing.get(BASELINE_MODEL_ID);
   const opusInputPrice = opusPricing?.inputPrice ?? 0;
   const opusOutputPrice = opusPricing?.outputPrice ?? 0;
   const baselineInput = (estimatedInputTokens / 1_000_000) * opusInputPrice;
@@ -94,7 +96,7 @@ export function calculateModelCost(
   const costEstimate = inputCost + outputCost;
 
   // Baseline: what Claude Opus 4.5 would cost (the premium reference)
-  const opusPricing = modelPricing.get("anthropic/claude-opus-4.5");
+  const opusPricing = modelPricing.get(BASELINE_MODEL_ID);
   const opusInputPrice = opusPricing?.inputPrice ?? 0;
   const opusOutputPrice = opusPricing?.outputPrice ?? 0;
   const baselineInput = (estimatedInputTokens / 1_000_000) * opusInputPrice;
