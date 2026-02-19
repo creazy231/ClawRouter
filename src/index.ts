@@ -722,28 +722,27 @@ const plugin: OpenClawPluginDefinition = {
       },
     });
 
-    // Generate wallet on first install (regardless of gateway mode)
-    // This ensures users can see their wallet address immediately after install
-    resolveOrGenerateWalletKey()
-      .then(({ address, source }) => {
-        if (source === "generated") {
-          api.logger.info(`Generated new wallet: ${address}`);
-        } else if (source === "saved") {
-          api.logger.info(`Using saved wallet: ${address}`);
-        } else {
-          api.logger.info(`Using wallet from BLOCKRUN_WALLET_KEY: ${address}`);
-        }
-      })
-      .catch((err) => {
-        api.logger.warn(
-          `Failed to initialize wallet: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      });
-
     // Skip proxy startup unless we're in gateway mode
     // The proxy keeps the Node.js event loop alive, preventing CLI commands from exiting
     // The proxy will start automatically when the gateway runs
     if (!isGatewayMode()) {
+      // Generate wallet on first install (even outside gateway mode)
+      // This ensures users can see their wallet address immediately after install
+      resolveOrGenerateWalletKey()
+        .then(({ address, source }) => {
+          if (source === "generated") {
+            api.logger.info(`Generated new wallet: ${address}`);
+          } else if (source === "saved") {
+            api.logger.info(`Using saved wallet: ${address}`);
+          } else {
+            api.logger.info(`Using wallet from BLOCKRUN_WALLET_KEY: ${address}`);
+          }
+        })
+        .catch((err) => {
+          api.logger.warn(
+            `Failed to initialize wallet: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
       api.logger.info("Not in gateway mode — proxy will start when gateway runs");
       return;
     }
@@ -751,6 +750,7 @@ const plugin: OpenClawPluginDefinition = {
     // Start x402 proxy in background WITHOUT blocking register()
     // CRITICAL: Do NOT await here - this was blocking model selection UI for 3+ seconds
     // causing Chandler's "infinite loop" issue where model selection never finishes
+    // Note: startProxyInBackground calls resolveOrGenerateWalletKey internally
     startProxyInBackground(api)
       .then(async () => {
         // Proxy started successfully - verify health
