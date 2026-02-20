@@ -735,19 +735,11 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   agenticTiers: {
     SIMPLE: {
       primary: "moonshot/kimi-k2.5", // Cheaper than Haiku ($0.5/$2.4 vs $1/$5), larger context
-      fallback: [
-        "claude-haiku-4.5",
-        "xai/grok-4-1-fast-non-reasoning",
-        "openai/gpt-4o-mini",
-      ],
+      fallback: ["claude-haiku-4.5", "xai/grok-4-1-fast-non-reasoning", "openai/gpt-4o-mini"],
     },
     MEDIUM: {
       primary: "xai/grok-code-fast-1", // Code specialist for agentic coding
-      fallback: [
-        "moonshot/kimi-k2.5",
-        "claude-haiku-4.5",
-        "claude-sonnet-4",
-      ],
+      fallback: ["moonshot/kimi-k2.5", "claude-haiku-4.5", "claude-sonnet-4"],
     },
     COMPLEX: {
       primary: "claude-sonnet-4",
@@ -760,11 +752,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
     },
     REASONING: {
       primary: "claude-sonnet-4", // Strong tool use + reasoning for agentic tasks
-      fallback: [
-        "claude-opus-4",
-        "xai/grok-4-1-fast-reasoning",
-        "deepseek/deepseek-reasoner",
-      ],
+      fallback: ["claude-opus-4", "xai/grok-4-1-fast-reasoning", "deepseek/deepseek-reasoner"],
     },
   },
 

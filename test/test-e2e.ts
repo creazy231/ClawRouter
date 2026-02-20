@@ -24,7 +24,8 @@ if (ENV_WALLET_KEY && !/^0x[0-9a-fA-F]{64}$/.test(ENV_WALLET_KEY)) {
 }
 
 const RUN_PAID_TESTS = Boolean(ENV_WALLET_KEY);
-const WALLET_KEY: `0x${string}` = (ENV_WALLET_KEY as `0x${string}` | undefined) ?? generatePrivateKey();
+const WALLET_KEY: `0x${string}` =
+  (ENV_WALLET_KEY as `0x${string}` | undefined) ?? generatePrivateKey();
 const WALLET_ADDRESS = privateKeyToAccount(WALLET_KEY).address;
 
 async function test(name: string, fn: (proxy: ProxyHandle) => Promise<void>, proxy: ProxyHandle) {
@@ -215,7 +216,8 @@ async function main() {
             messages: [
               {
                 role: "user",
-                content: "What is the capital of France? Respond with exactly one word in English: Paris.",
+                content:
+                  "What is the capital of France? Respond with exactly one word in English: Paris.",
               },
             ],
             max_tokens: 40,
@@ -230,7 +232,8 @@ async function main() {
         const content = body.choices?.[0]?.message?.content;
         if (!content) throw new Error("No content in response");
         const looksRelevant = /(paris|capital|france|巴黎|法国|首都)/i.test(content);
-        if (!looksRelevant) throw new Error(`Expected capital-of-France-related answer, got: ${content}`);
+        if (!looksRelevant)
+          throw new Error(`Expected capital-of-France-related answer, got: ${content}`);
         console.log(`(response: "${content.trim().slice(0, 60)}") `);
       },
       proxy,
@@ -375,9 +378,7 @@ async function main() {
 
         // Current proxy may auto-compress/forward large requests and still succeed.
         if (res.status !== 200) {
-          throw new Error(
-            `Expected 200 or 413, got ${res.status}: ${payload.text.slice(0, 200)}`,
-          );
+          throw new Error(`Expected 200 or 413, got ${res.status}: ${payload.text.slice(0, 200)}`);
         }
 
         const content = extractFirstMessageContent(payload);
@@ -434,7 +435,9 @@ async function main() {
         if (!errorMsg.includes("message") && !errorMsg.includes("invalid request")) {
           throw new Error(`Unexpected error message: ${errorMsg.slice(0, 200)}`);
         }
-        console.log(`(status=${res.status}, error="${extractErrorMessage(payload).slice(0, 80)}") `);
+        console.log(
+          `(status=${res.status}, error="${extractErrorMessage(payload).slice(0, 80)}") `,
+        );
       },
       proxy,
     )) && allPassed;
@@ -460,7 +463,9 @@ async function main() {
         });
         const payload = await readResponseBody(res);
         if (res.status !== 200) {
-          throw new Error(`Expected 200 after truncation, got ${res.status}: ${payload.text.slice(0, 200)}`);
+          throw new Error(
+            `Expected 200 after truncation, got ${res.status}: ${payload.text.slice(0, 200)}`,
+          );
         }
         const content = extractFirstMessageContent(payload);
         if (typeof content !== "string" || content.length === 0) {
