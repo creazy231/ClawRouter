@@ -1,4 +1,4 @@
-name: Integration Tests
+name: Security Scanner
 
 on:
   push:
@@ -8,16 +8,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  integration:
+  scanner:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build integration test image
+      - name: Build integration image
         run: docker compose -f test/integration/docker-compose.yml build
 
-      - name: Run lifecycle + scanner tests
+      - name: Run security scanner
         run: >
-          docker compose -f test/integration/docker-compose.yml
-          up --abort-on-container-exit --exit-code-from integration
+          docker compose -f test/integration/docker-compose.yml run --rm
+          integration npx vitest run --config vitest.integration.config.ts
+          test/integration/security-scanner.test.ts
