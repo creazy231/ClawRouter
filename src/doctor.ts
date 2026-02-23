@@ -223,7 +223,9 @@ function printDiagnostics(result: DiagnosticResult): void {
   console.log("System");
   console.log(`  ${green(`OS: ${result.system.os}`)}`);
   console.log(`  ${green(`Node: ${result.system.nodeVersion}`)}`);
-  console.log(`  ${green(`Memory: ${result.system.memoryFree} free / ${result.system.memoryTotal}`)}`);
+  console.log(
+    `  ${green(`Memory: ${result.system.memoryFree} free / ${result.system.memoryTotal}`)}`,
+  );
 
   // Wallet
   console.log("\nWallet");
@@ -246,7 +248,9 @@ function printDiagnostics(result: DiagnosticResult): void {
   // Network
   console.log("\nNetwork");
   if (result.network.blockrunApi.reachable) {
-    console.log(`  ${green(`BlockRun API: reachable (${result.network.blockrunApi.latencyMs}ms)`)}`);
+    console.log(
+      `  ${green(`BlockRun API: reachable (${result.network.blockrunApi.latencyMs}ms)`)}`,
+    );
   } else {
     console.log(`  ${red("BlockRun API: unreachable")}`);
   }
@@ -258,7 +262,9 @@ function printDiagnostics(result: DiagnosticResult): void {
 
   // Logs
   console.log("\nLogs");
-  console.log(`  ${green(`Last 24h: ${result.logs.requestsLast24h} requests, ${result.logs.costLast24h} spent`)}`);
+  console.log(
+    `  ${green(`Last 24h: ${result.logs.requestsLast24h} requests, ${result.logs.costLast24h} spent`)}`,
+  );
   if (result.logs.errorsFound > 0) {
     console.log(`  ${yellow(`${result.logs.errorsFound} errors found in logs`)}`);
   }

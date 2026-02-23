@@ -6,11 +6,11 @@
 
 Route every request to the right model at the right price.<br>
 15-dimension scoring, <1ms local routing, optimized for autonomous agents.<br>
-One wallet, 38+ models, zero API keys.
+One wallet, 41+ models, zero API keys.
 
 <img src="https://img.shields.io/badge/🚀_92%25_Cost_Savings-success?style=for-the-badge" alt="92% savings">&nbsp;
 <img src="https://img.shields.io/badge/🔑_Zero_API_Keys-blue?style=for-the-badge" alt="No API keys">&nbsp;
-<img src="https://img.shields.io/badge/🤖_38+_Models-purple?style=for-the-badge" alt="38+ models">&nbsp;
+<img src="https://img.shields.io/badge/🤖_41+_Models-purple?style=for-the-badge" alt="38+ models">&nbsp;
 <img src="https://img.shields.io/badge/💰_Non--Custodial-orange?style=for-the-badge" alt="Non-custodial">&nbsp;
 <img src="https://img.shields.io/badge/⚡_<1ms_Routing-yellow?style=for-the-badge" alt="Fast routing">
 
@@ -33,18 +33,18 @@ One wallet, 38+ models, zero API keys.
 
 ## 📑 Quick Navigation
 
-| Section                                   | Description                    |
-| ----------------------------------------- | ------------------------------ |
-| [Quick Start](#-quick-start)              | Install in 2 minutes           |
-| [Routing Profiles](#-routing-profiles)    | eco / auto / premium / free    |
-| [How It Works](#-how-it-works)            | 15-dimension local routing     |
-| [Models & Pricing](#-models--pricing)     | 30+ models, full price list    |
-| [Screenshots](#-screenshots)              | See it in action               |
-| [Payment](#-payment)                      | x402 non-custodial USDC        |
-| [Configuration](#%EF%B8%8F-configuration) | Environment variables          |
+| Section                                   | Description                     |
+| ----------------------------------------- | ------------------------------- |
+| [Quick Start](#-quick-start)              | Install in 2 minutes            |
+| [Routing Profiles](#-routing-profiles)    | eco / auto / premium / free     |
+| [How It Works](#-how-it-works)            | 15-dimension local routing      |
+| [Models & Pricing](#-models--pricing)     | 41+ models, full price list     |
+| [Screenshots](#-screenshots)              | See it in action                |
+| [Payment](#-payment)                      | x402 non-custodial USDC         |
+| [Configuration](#%EF%B8%8F-configuration) | Environment variables           |
 | [Troubleshooting](#-troubleshooting)      | `doctor` AI-powered diagnostics |
-| [vs OpenRouter](#-vs-openrouter)          | Why ClawRouter wins            |
-| [Support](#-support)                      | Telegram, X, founders          |
+| [vs OpenRouter](#-vs-openrouter)          | Why ClawRouter wins             |
+| [Support](#-support)                      | Telegram, X, founders           |
 
 ---
 
@@ -99,7 +99,7 @@ Request → Weighted Scorer (15 dimensions) → Tier → Cheapest Model → Resp
 
 ## 💰 Models & Pricing
 
-38+ models across 7 providers, one wallet:
+41+ models across 7 providers, one wallet:
 
 <details>
 <summary><strong>Click to expand full model list</strong></summary>

@@ -60,8 +60,18 @@ For more info: https://github.com/BlockRunAI/ClawRouter
 `);
 }
 
-function parseArgs(args: string[]): { version: boolean; help: boolean; doctor: boolean; port?: number } {
-  const result = { version: false, help: false, doctor: false, port: undefined as number | undefined };
+function parseArgs(args: string[]): {
+  version: boolean;
+  help: boolean;
+  doctor: boolean;
+  port?: number;
+} {
+  const result = {
+    version: false,
+    help: false,
+    doctor: false,
+    port: undefined as number | undefined,
+  };
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
