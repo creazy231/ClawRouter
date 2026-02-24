@@ -12,12 +12,12 @@ import { PARTNER_SERVICES, type PartnerServiceDefinition } from "./registry.js";
 export type PartnerToolDefinition = {
   name: string;
   description: string;
-  inputSchema: {
+  parameters: {
     type: "object";
     properties: Record<string, unknown>;
     required: string[];
   };
-  execute: (args: Record<string, unknown>) => Promise<unknown>;
+  execute: (toolCallId: string, params: Record<string, unknown>) => Promise<unknown>;
 };
 
 /**
@@ -57,18 +57,18 @@ function buildTool(
       `Partner: ${service.partner}`,
       `Pricing: ${service.pricing.perUnit} per ${service.pricing.unit} (min: ${service.pricing.minimum}, max: ${service.pricing.maximum})`,
     ].join("\n"),
-    inputSchema: {
+    parameters: {
       type: "object",
       properties,
       required,
     },
-    execute: async (args: Record<string, unknown>) => {
+    execute: async (_toolCallId: string, params: Record<string, unknown>) => {
       const url = `${proxyBaseUrl}/v1${service.proxyPath}`;
 
       const response = await fetch(url, {
         method: service.method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(args),
+        body: JSON.stringify(params),
       });
 
       if (!response.ok) {
@@ -78,7 +78,17 @@ function buildTool(
         );
       }
 
-      return response.json();
+      const data = await response.json();
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(data, null, 2),
+          },
+        ],
+        details: data,
+      };
     },
   };
 }
