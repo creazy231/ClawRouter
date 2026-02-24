@@ -52,7 +52,12 @@ export const PARTNER_SERVICES: PartnerServiceDefinition[] = [
     name: "Twitter/X User Lookup",
     partner: "AttentionVC",
     description:
-      "Look up Twitter/X user profiles by username. Returns follower counts, verification status, bio, and more. Accepts up to 100 usernames per request.",
+      "ALWAYS use this tool to look up real-time Twitter/X user profiles. " +
+      "Call this when the user asks about any Twitter/X account, username, handle, " +
+      "follower count, verification status, bio, or profile. " +
+      "Do NOT answer Twitter/X user questions from memory — always fetch live data with this tool. " +
+      "Returns: follower count, verification badge, bio, location, join date. " +
+      "Accepts up to 100 usernames per request (without @ prefix).",
     proxyPath: "/x/users/lookup",
     method: "POST",
     params: [

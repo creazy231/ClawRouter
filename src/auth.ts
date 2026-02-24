@@ -46,12 +46,31 @@ async function loadSavedWallet(): Promise<string | undefined> {
       console.log(`[ClawRouter] ✓ Loaded existing wallet from ${WALLET_FILE}`);
       return key;
     }
-    console.warn(`[ClawRouter] ⚠ Wallet file exists but is invalid (wrong format)`);
+    // File exists but content is wrong — do NOT silently fall through to generate a new wallet.
+    // This would silently replace a funded wallet with an empty one.
+    console.error(`[ClawRouter] ✗ CRITICAL: Wallet file exists but has invalid format!`);
+    console.error(`[ClawRouter]   File: ${WALLET_FILE}`);
+    console.error(`[ClawRouter]   Expected: 0x followed by 64 hex characters (66 chars total)`);
+    console.error(`[ClawRouter]   To fix: restore your backup key or set BLOCKRUN_WALLET_KEY env var`);
+    throw new Error(
+      `Wallet file at ${WALLET_FILE} is corrupted or has wrong format. ` +
+      `Refusing to auto-generate new wallet to protect existing funds. ` +
+      `Restore your backup key or set BLOCKRUN_WALLET_KEY environment variable.`,
+    );
   } catch (err) {
-    // File doesn't exist yet - this is expected on first run
+    // Re-throw corruption errors (not ENOENT)
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      // If it's our own thrown error, re-throw as-is
+      if (err instanceof Error && err.message.includes("Refusing to auto-generate")) {
+        throw err;
+      }
       console.error(
         `[ClawRouter] ✗ Failed to read wallet file: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw new Error(
+        `Cannot read wallet file at ${WALLET_FILE}: ${err instanceof Error ? err.message : String(err)}. ` +
+        `Refusing to auto-generate new wallet to protect existing funds. ` +
+        `Fix file permissions or set BLOCKRUN_WALLET_KEY environment variable.`,
       );
     }
   }
@@ -84,6 +103,22 @@ async function generateAndSaveWallet(): Promise<{ key: string; address: string }
       `Failed to verify wallet file after creation: ${err instanceof Error ? err.message : String(err)}`,
     );
   }
+
+  // Print prominent backup reminder after generating a new wallet
+  console.log(`[ClawRouter]`);
+  console.log(`[ClawRouter] ════════════════════════════════════════════════`);
+  console.log(`[ClawRouter]   NEW WALLET GENERATED — BACK UP YOUR KEY NOW`);
+  console.log(`[ClawRouter] ════════════════════════════════════════════════`);
+  console.log(`[ClawRouter]   Address : ${account.address}`);
+  console.log(`[ClawRouter]   Key file: ${WALLET_FILE}`);
+  console.log(`[ClawRouter]`);
+  console.log(`[ClawRouter]   To back up, run in OpenClaw:`);
+  console.log(`[ClawRouter]     /wallet export`);
+  console.log(`[ClawRouter]`);
+  console.log(`[ClawRouter]   To restore on another machine:`);
+  console.log(`[ClawRouter]     export BLOCKRUN_WALLET_KEY=<your_key>`);
+  console.log(`[ClawRouter] ════════════════════════════════════════════════`);
+  console.log(`[ClawRouter]`);
 
   return { key, address: account.address };
 }

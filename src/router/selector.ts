@@ -12,7 +12,7 @@ export type ModelPricing = {
   outputPrice: number; // per 1M tokens
 };
 
-const BASELINE_MODEL_ID = "anthropic/claude-opus-4-5";
+const BASELINE_MODEL_ID = "anthropic/claude-opus-4.6";
 
 /**
  * Select the primary model for a tier and build the RoutingDecision.

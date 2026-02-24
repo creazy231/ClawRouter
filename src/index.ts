@@ -430,9 +430,14 @@ async function startProxyInBackground(api: OpenClawPluginApi): Promise<void> {
   // Resolve wallet key: saved file → env var → auto-generate
   const { key: walletKey, address, source } = await resolveOrGenerateWalletKey();
 
-  // Log wallet source (brief - balance check happens after proxy starts)
+  // Log wallet source
   if (source === "generated") {
-    api.logger.info(`Generated new wallet: ${address}`);
+    api.logger.warn(`════════════════════════════════════════════════`);
+    api.logger.warn(`  NEW WALLET GENERATED — BACK UP YOUR KEY NOW!`);
+    api.logger.warn(`  Address : ${address}`);
+    api.logger.warn(`  Run /wallet export to get your private key`);
+    api.logger.warn(`  Losing this key = losing your USDC funds`);
+    api.logger.warn(`════════════════════════════════════════════════`);
   } else if (source === "saved") {
     api.logger.info(`Using saved wallet: ${address}`);
   } else {
@@ -698,6 +703,7 @@ const plugin: OpenClawPluginDefinition = {
             lines.push(`  ${svc.description}`);
             lines.push(`  Tool: \`${`blockrun_${svc.id}`}\``);
             lines.push(`  Pricing: ${svc.pricing.perUnit} per ${svc.pricing.unit} (min ${svc.pricing.minimum}, max ${svc.pricing.maximum})`);
+            lines.push(`  **How to use:** Ask "Look up Twitter user @elonmusk" or "Get info on these X accounts: @naval, @balajis"`);
             lines.push("");
           }
 
@@ -764,7 +770,12 @@ const plugin: OpenClawPluginDefinition = {
       resolveOrGenerateWalletKey()
         .then(({ address, source }) => {
           if (source === "generated") {
-            api.logger.info(`Generated new wallet: ${address}`);
+            api.logger.warn(`════════════════════════════════════════════════`);
+            api.logger.warn(`  NEW WALLET GENERATED — BACK UP YOUR KEY NOW!`);
+            api.logger.warn(`  Address : ${address}`);
+            api.logger.warn(`  Run /wallet export to get your private key`);
+            api.logger.warn(`  Losing this key = losing your USDC funds`);
+            api.logger.warn(`════════════════════════════════════════════════`);
           } else if (source === "saved") {
             api.logger.info(`Using saved wallet: ${address}`);
           } else {
