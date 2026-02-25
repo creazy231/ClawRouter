@@ -243,8 +243,11 @@ export function classifyByRules(
     ),
   ];
 
-  // Score agentic task indicators
-  const agenticResult = scoreAgenticTask(text, config.agenticTaskKeywords);
+  // Score agentic task indicators — user prompt only
+  // System prompt describes assistant behavior, not user's intent.
+  // e.g. a coding assistant system prompt with "edit files" / "fix bugs" should NOT
+  // force every request into agentic mode.
+  const agenticResult = scoreAgenticTask(userText, config.agenticTaskKeywords);
   dimensions.push(agenticResult.dimensionScore);
   const agenticScore = agenticResult.agenticScore;
 

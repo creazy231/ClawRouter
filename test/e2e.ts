@@ -76,8 +76,8 @@ const config = DEFAULT_ROUTING_CONFIG;
   );
 }
 
-// System prompt with reasoning keywords should NOT trigger REASONING for simple queries
-// This was a bug: if client's system prompt had "step by step" or "logically", ALL queries became REASONING
+// System prompt with reasoning/agentic keywords should NOT affect simple queries
+// Bug: if client's system prompt had "step by step" / "edit files" / "fix bugs", ALL queries became REASONING/agentic
 {
   console.log("\nSystem prompt with reasoning keywords (should NOT affect simple queries):");
   const systemPrompt = "Think step by step and reason logically about the user's question.";
@@ -110,6 +110,42 @@ const config = DEFAULT_ROUTING_CONFIG;
   assert(
     r4.tier === "REASONING",
     `User asks for step-by-step proof → ${r4.tier} (should be REASONING)`,
+  );
+}
+
+// Coding assistant system prompt should NOT force agentic mode on simple queries
+// Bug: OpenClaw's system prompt ("edit files", "fix bugs", "check", "verify") was
+// triggering agenticScore >= 0.6 on EVERY request, routing all to Sonnet via agentic tiers
+{
+  console.log("\nCoding assistant system prompt (should NOT force agentic mode):");
+  const codingSystemPrompt =
+    "You are a coding assistant. You can edit files, fix bugs, check code quality, " +
+    "verify tests, deploy applications, and install dependencies. Make sure to follow " +
+    "best practices and confirm changes before applying them.";
+
+  const r1 = classifyByRules("What does this function do?", codingSystemPrompt, 20, config.scoring);
+  assert(
+    r1.agenticScore < 0.5,
+    `Simple question with coding system prompt → agenticScore=${r1.agenticScore} (should be <0.5, not forced agentic)`,
+  );
+
+  const r2 = classifyByRules("What is React?", codingSystemPrompt, 15, config.scoring);
+  assert(
+    r2.agenticScore < 0.5,
+    `"What is React?" with coding system prompt → agenticScore=${r2.agenticScore} (should be <0.5)`,
+  );
+
+  // But if USER explicitly requests agentic work, it SHOULD trigger agentic mode
+  // Need 3+ agentic keyword matches for score 0.6: "fix", "deploy", "make sure"
+  const r3 = classifyByRules(
+    "Fix the bug in auth.ts, deploy to staging, and make sure it works",
+    codingSystemPrompt,
+    30,
+    config.scoring,
+  );
+  assert(
+    r3.agenticScore >= 0.5,
+    `User asks for multi-step agentic task → agenticScore=${r3.agenticScore} (should be >=0.5)`,
   );
 }
 
