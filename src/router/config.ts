@@ -1049,10 +1049,10 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       ],
     },
     MEDIUM: {
-      primary: "xai/grok-code-fast-1", // Code specialist, $0.20/$1.50
+      primary: "moonshot/kimi-k2.5", // $0.50/$2.40 - strong tool use, proper function call format
       fallback: [
-        "google/gemini-2.5-flash-lite", // 1M context, ultra cheap ($0.10/$0.40)
         "deepseek/deepseek-chat",
+        "google/gemini-2.5-flash-lite", // 1M context, ultra cheap ($0.10/$0.40)
         "xai/grok-4-1-fast-non-reasoning", // Upgraded Grok 4.1
       ],
     },
@@ -1107,7 +1107,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       fallback: [
         "anthropic/claude-haiku-4.5",
         "google/gemini-2.5-flash-lite",
-        "xai/grok-code-fast-1",
+        "deepseek/deepseek-chat",
       ],
     },
     MEDIUM: {
@@ -1153,8 +1153,8 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       ],
     },
     MEDIUM: {
-      primary: "xai/grok-code-fast-1", // Code specialist for agentic coding
-      fallback: ["moonshot/kimi-k2.5", "anthropic/claude-haiku-4.5", "claude-sonnet-4"],
+      primary: "moonshot/kimi-k2.5", // $0.50/$2.40 - strong tool use, handles function calls correctly
+      fallback: ["anthropic/claude-haiku-4.5", "deepseek/deepseek-chat", "xai/grok-4-1-fast-non-reasoning"],
     },
     COMPLEX: {
       primary: "anthropic/claude-sonnet-4.6",
