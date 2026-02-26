@@ -129,7 +129,7 @@ export function route(
   );
 }
 
-export { getFallbackChain, getFallbackChainFiltered, calculateModelCost } from "./selector.js";
+export { getFallbackChain, getFallbackChainFiltered, filterByToolCalling, calculateModelCost } from "./selector.js";
 export { DEFAULT_ROUTING_CONFIG } from "./config.js";
 export type { RoutingDecision, Tier, RoutingConfig } from "./types.js";
 export type { ModelPricing } from "./selector.js";

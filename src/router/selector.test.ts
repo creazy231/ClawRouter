@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateModelCost, selectModel, type ModelPricing } from "./selector.js";
+import { calculateModelCost, filterByToolCalling, selectModel, type ModelPricing } from "./selector.js";
 import type { TierConfig } from "./types.js";
 
 const TIER_CONFIGS: Record<"SIMPLE" | "MEDIUM" | "COMPLEX" | "REASONING", TierConfig> = {
@@ -30,6 +30,35 @@ describe("selectModel", () => {
 
     expect(decision.baselineCost).toBeGreaterThan(0);
     expect(decision.savings).toBeGreaterThan(0);
+  });
+});
+
+describe("filterByToolCalling", () => {
+  const supportsToolCalling = (modelId: string) =>
+    !["xai/grok-code-fast-1", "nvidia/gpt-oss-120b"].includes(modelId);
+
+  it("removes models without tool calling support when request has tools", () => {
+    const models = ["moonshot/kimi-k2.5", "xai/grok-code-fast-1", "deepseek/deepseek-chat"];
+    const filtered = filterByToolCalling(models, true, supportsToolCalling);
+    expect(filtered).toEqual(["moonshot/kimi-k2.5", "deepseek/deepseek-chat"]);
+  });
+
+  it("keeps all models when request has no tools", () => {
+    const models = ["moonshot/kimi-k2.5", "xai/grok-code-fast-1", "nvidia/gpt-oss-120b"];
+    const filtered = filterByToolCalling(models, false, supportsToolCalling);
+    expect(filtered).toEqual(models);
+  });
+
+  it("returns original list unchanged when all models support tool calling", () => {
+    const models = ["moonshot/kimi-k2.5", "anthropic/claude-sonnet-4.6", "deepseek/deepseek-chat"];
+    const filtered = filterByToolCalling(models, true, supportsToolCalling);
+    expect(filtered).toEqual(models);
+  });
+
+  it("returns full list unchanged when no models support tool calling, to avoid empty chain", () => {
+    const models = ["xai/grok-code-fast-1", "nvidia/gpt-oss-120b"];
+    const filtered = filterByToolCalling(models, true, supportsToolCalling);
+    expect(filtered).toEqual(models);
   });
 });
 

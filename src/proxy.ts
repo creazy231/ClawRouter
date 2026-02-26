@@ -30,6 +30,7 @@ import {
   route,
   getFallbackChain,
   getFallbackChainFiltered,
+  filterByToolCalling,
   calculateModelCost,
   DEFAULT_ROUTING_CONFIG,
   type RouterOptions,
@@ -37,12 +38,14 @@ import {
   type RoutingConfig,
   type ModelPricing,
 } from "./router/index.js";
+import { classifyByRules } from "./router/rules.js";
 import {
   BLOCKRUN_MODELS,
   OPENCLAW_MODELS,
   resolveModelAlias,
   getModelContextWindow,
   isReasoningModel,
+  supportsToolCalling,
 } from "./models.js";
 import { logUsage, type UsageEntry } from "./logger.js";
 import { getStats } from "./stats.js";
@@ -1612,6 +1615,7 @@ async function proxyRequest(
 
   // --- Smart routing ---
   let routingDecision: RoutingDecision | undefined;
+  let hasTools = false; // true when request includes a tools schema
   let isStreaming = false;
   let modelId = "";
   let maxTokens = 4096;
@@ -1630,12 +1634,17 @@ async function proxyRequest(
       maxTokens = (parsed.max_tokens as number) || 4096;
       let bodyModified = false;
 
+      // Extract last user message content (used by session journal + /debug command)
+      const parsedMessages = Array.isArray(parsed.messages)
+        ? (parsed.messages as Array<{ role: string; content: unknown }>)
+        : [];
+      const lastUserMsg = [...parsedMessages].reverse().find((m) => m.role === "user");
+      const lastContent = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+
       // --- Session Journal: Inject context if needed ---
       // Check if the last user message asks about past work
-      if (sessionId && Array.isArray(parsed.messages)) {
-        const messages = parsed.messages as Array<{ role: string; content: unknown }>;
-        const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
-        const lastContent = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+      if (sessionId && parsedMessages.length > 0) {
+        const messages = parsedMessages;
 
         if (sessionJournal.needsContext(lastContent)) {
           const journalText = sessionJournal.format(sessionId);
@@ -1657,6 +1666,131 @@ async function proxyRequest(
             );
           }
         }
+      }
+
+      // --- /debug command: return routing diagnostics without calling upstream ---
+      if (lastContent.startsWith("/debug")) {
+        const debugPrompt = lastContent.slice("/debug".length).trim() || "hello";
+        const messages = parsed.messages as Array<{ role: string; content: unknown }>;
+        const systemMsg = messages?.find((m) => m.role === "system");
+        const systemPrompt =
+          typeof systemMsg?.content === "string" ? systemMsg.content : undefined;
+        const fullText = `${systemPrompt ?? ""} ${debugPrompt}`;
+        const estimatedTokens = Math.ceil(fullText.length / 4);
+
+        // Determine routing profile
+        const normalizedModel =
+          typeof parsed.model === "string" ? parsed.model.trim().toLowerCase() : "";
+        const profileName = normalizedModel.replace("blockrun/", "");
+        const debugProfile = (
+          ["free", "eco", "auto", "premium"].includes(profileName) ? profileName : "auto"
+        ) as "free" | "eco" | "auto" | "premium";
+
+        // Run scoring
+        const scoring = classifyByRules(
+          debugPrompt,
+          systemPrompt,
+          estimatedTokens,
+          DEFAULT_ROUTING_CONFIG.scoring,
+        );
+
+        // Run full routing decision
+        const debugRouting = route(debugPrompt, systemPrompt, maxTokens, {
+          ...routerOpts,
+          routingProfile: debugProfile,
+        });
+
+        // Format dimension scores
+        const dimLines = (scoring.dimensions ?? [])
+          .map((d) => {
+            const nameStr = (d.name + ":").padEnd(24);
+            const scoreStr = d.score.toFixed(2).padStart(6);
+            const sigStr = d.signal ? `  [${d.signal}]` : "";
+            return `  ${nameStr}${scoreStr}${sigStr}`;
+          })
+          .join("\n");
+
+        // Session info
+        const sess = sessionId ? sessionStore.getSession(sessionId) : undefined;
+        const sessLine = sess
+          ? `Session: ${sessionId!.slice(0, 8)}... → pinned: ${sess.model} (${sess.requestCount} requests)`
+          : sessionId
+            ? `Session: ${sessionId.slice(0, 8)}... → no pinned model`
+            : "Session: none";
+
+        const { simpleMedium, mediumComplex, complexReasoning } =
+          DEFAULT_ROUTING_CONFIG.scoring.tierBoundaries;
+
+        const debugText = [
+          "ClawRouter Debug",
+          "",
+          `Profile: ${debugProfile} | Tier: ${debugRouting.tier} | Model: ${debugRouting.model}`,
+          `Confidence: ${debugRouting.confidence.toFixed(2)} | Cost: $${debugRouting.costEstimate.toFixed(4)} | Savings: ${(debugRouting.savings * 100).toFixed(0)}%`,
+          `Reasoning: ${debugRouting.reasoning}`,
+          "",
+          `Scoring (weighted: ${scoring.score.toFixed(3)})`,
+          dimLines,
+          "",
+          `Tier Boundaries: SIMPLE <${simpleMedium.toFixed(2)} | MEDIUM <${mediumComplex.toFixed(2)} | COMPLEX <${complexReasoning.toFixed(2)} | REASONING >=${complexReasoning.toFixed(2)}`,
+          "",
+          sessLine,
+        ].join("\n");
+
+        // Build synthetic OpenAI chat completion response
+        const completionId = `chatcmpl-debug-${Date.now()}`;
+        const timestamp = Math.floor(Date.now() / 1000);
+        const syntheticResponse = {
+          id: completionId,
+          object: "chat.completion",
+          created: timestamp,
+          model: "clawrouter/debug",
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: debugText },
+              finish_reason: "stop",
+            },
+          ],
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        };
+
+        if (isStreaming) {
+          // SSE streaming response
+          res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          });
+          const sseChunk = {
+            id: completionId,
+            object: "chat.completion.chunk",
+            created: timestamp,
+            model: "clawrouter/debug",
+            choices: [
+              {
+                index: 0,
+                delta: { role: "assistant", content: debugText },
+                finish_reason: null,
+              },
+            ],
+          };
+          const sseDone = {
+            id: completionId,
+            object: "chat.completion.chunk",
+            created: timestamp,
+            model: "clawrouter/debug",
+            choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+          };
+          res.write(`data: ${JSON.stringify(sseChunk)}\n\n`);
+          res.write(`data: ${JSON.stringify(sseDone)}\n\n`);
+          res.write("data: [DONE]\n\n");
+          res.end();
+        } else {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(syntheticResponse));
+        }
+        console.log(`[ClawRouter] /debug command → ${debugRouting.tier} | ${debugRouting.model}`);
+        return;
       }
 
       // Force stream: false — BlockRun API doesn't support streaming yet
@@ -1757,7 +1891,7 @@ async function proxyRequest(
             // Agentic mode is now triggered by keyword-based detection (agenticScore >= 0.6)
             // This allows simple queries with tools to use cheaper models
             const tools = parsed.tools as unknown[] | undefined;
-            const hasTools = Array.isArray(tools) && tools.length > 0;
+            hasTools = Array.isArray(tools) && tools.length > 0;
 
             if (hasTools && tools) {
               console.log(
@@ -2054,8 +2188,19 @@ async function proxyRequest(
         );
       }
 
+      // Filter to models that support tool calling when request has tools.
+      // Prevents models like grok-code-fast-1 from outputting tool invocations
+      // as plain text JSON (the "talking to itself" bug).
+      const toolFiltered = filterByToolCalling(contextFiltered, hasTools, supportsToolCalling);
+      const toolExcluded = contextFiltered.filter((m) => !toolFiltered.includes(m));
+      if (toolExcluded.length > 0) {
+        console.log(
+          `[ClawRouter] Tool-calling filter: excluded ${toolExcluded.join(", ")} (no structured function call support)`,
+        );
+      }
+
       // Limit to MAX_FALLBACK_ATTEMPTS to prevent infinite loops
-      modelsToTry = contextFiltered.slice(0, MAX_FALLBACK_ATTEMPTS);
+      modelsToTry = toolFiltered.slice(0, MAX_FALLBACK_ATTEMPTS);
 
       // Deprioritize rate-limited models (put them at the end)
       modelsToTry = prioritizeNonRateLimited(modelsToTry);

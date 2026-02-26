@@ -117,6 +117,22 @@ export function calculateModelCost(
 }
 
 /**
+ * Filter a model list to only those that support tool calling.
+ * When hasTools is false, returns the list unchanged.
+ * When all models lack tool calling support, returns the full list as a fallback
+ * (better to let the API error than produce an empty chain).
+ */
+export function filterByToolCalling(
+  models: string[],
+  hasTools: boolean,
+  supportsToolCalling: (modelId: string) => boolean,
+): string[] {
+  if (!hasTools) return models;
+  const filtered = models.filter(supportsToolCalling);
+  return filtered.length > 0 ? filtered : models;
+}
+
+/**
  * Get the fallback chain filtered by context length.
  * Only returns models that can handle the estimated total context.
  *
