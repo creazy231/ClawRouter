@@ -61,6 +61,7 @@ import { join } from "node:path";
 import { VERSION } from "./version.js";
 import { privateKeyToAccount } from "viem/accounts";
 import { getStats, formatStatsAscii } from "./stats.js";
+import { buildPartnerTools, PARTNER_SERVICES } from "./partners/index.js";
 
 /**
  * Detect if we're running in shell completion mode.
@@ -624,7 +625,7 @@ const plugin: OpenClawPluginDefinition = {
   description: "Smart LLM router — 30+ models, x402 micropayments, 78% cost savings",
   version: VERSION,
 
-  async register(api: OpenClawPluginApi) {
+  register(api: OpenClawPluginApi) {
     // Check if ClawRouter is disabled via environment variable
     // Usage: CLAWROUTER_DISABLED=true openclaw gateway start
     const isDisabled =
@@ -672,7 +673,6 @@ const plugin: OpenClawPluginDefinition = {
 
     // Register partner API tools (Twitter/X lookup, etc.)
     try {
-      const { buildPartnerTools, PARTNER_SERVICES } = await import("./partners/index.js");
       const proxyBaseUrl = `http://127.0.0.1:${runtimePort}`;
       const partnerTools = buildPartnerTools(proxyBaseUrl);
       for (const tool of partnerTools) {
