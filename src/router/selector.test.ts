@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateModelCost, filterByToolCalling, selectModel, type ModelPricing } from "./selector.js";
+import {
+  calculateModelCost,
+  filterByToolCalling,
+  selectModel,
+  type ModelPricing,
+} from "./selector.js";
 import type { TierConfig } from "./types.js";
 
 const TIER_CONFIGS: Record<"SIMPLE" | "MEDIUM" | "COMPLEX" | "REASONING", TierConfig> = {

@@ -47,6 +47,7 @@ Added `/partners` proxy endpoint for partner tool invocation. Direct model picks
 **Problem:** Provider calls could hang indefinitely. Cloud Run kills at 540s with a 504, burning compute and giving users zero responses. 15+ 504s observed in a 2-hour window.
 
 **Fix:** Added 120s timeout to all 13 outbound provider calls:
+
 - SDK clients (OpenAI, Azure, Anthropic, Gemini, DeepSeek, xAI): `timeout: 120_000, maxRetries: 0`
 - Raw fetch calls (OpenAI Responses, NVIDIA, Moonshot, MiniMax, xAI Search): `withTimeout()` wrapper using AbortController
 
@@ -73,6 +74,7 @@ Worst-case: primary (120s) + fallback (120s) + free fallback (120s) = 360s, well
 ### OpenClaw partner tool API contract (v0.10.8)
 
 Three mismatches fixed:
+
 1. `inputSchema` → `parameters` (OpenClaw expects `parameters` key)
 2. `execute(args)` → `execute(toolCallId, params)` (first arg is tool call ID)
 3. Return `{ content: [{type:'text',text:'...'}] }` instead of raw JSON
@@ -93,27 +95,27 @@ Corrupted wallet files now throw with recovery instructions instead of silently 
 
 ## Server-Side Fixes (BlockRun API, deployed Feb 26)
 
-| Fix | Commit |
-|-----|--------|
-| 120s provider timeout on all 13 outbound calls | `3fc6429` |
-| `gemini-3.1-pro-preview` → `gemini-3.1-pro` redirect | `3fc6429` |
-| Rename gemini-3.1-pro-preview in model registry | `2535771` |
-| Gemini message ordering constraints for tool calls | `fcc2e81` |
-| Hyphen-format Anthropic model redirects | `dbea819` |
-| Per-source pricing in x402 search discovery | `6877503` |
-| AttentionVC nested response unwrap | `dabe26c` |
+| Fix                                                    | Commit    |
+| ------------------------------------------------------ | --------- |
+| 120s provider timeout on all 13 outbound calls         | `3fc6429` |
+| `gemini-3.1-pro-preview` → `gemini-3.1-pro` redirect   | `3fc6429` |
+| Rename gemini-3.1-pro-preview in model registry        | `2535771` |
+| Gemini message ordering constraints for tool calls     | `fcc2e81` |
+| Hyphen-format Anthropic model redirects                | `dbea819` |
+| Per-source pricing in x402 search discovery            | `6877503` |
+| AttentionVC nested response unwrap                     | `dabe26c` |
 | Double-filter orphaned tool messages after role filter | `fedc10f` |
-| Moonshot role filter + empty tool_call_id guard | `b96cc3b` |
+| Moonshot role filter + empty tool_call_id guard        | `b96cc3b` |
 
 ---
 
 ## Version History
 
-| Version | Date | Key Change |
-|---------|------|------------|
-| v0.10.11 | Feb 25 | Gemini 3.1 model rename |
-| v0.10.10 | Feb 25 | Routing debug headers |
-| v0.10.9 | Feb 24 | Agentic mode false trigger fix |
-| v0.10.8 | Feb 24 | OpenClaw tool API contract fix |
-| v0.10.7 | Feb 24 | Partner tools + wallet safety |
-| v0.10.6 | Feb 23 | Partner API proxy + cost tracking |
+| Version  | Date   | Key Change                        |
+| -------- | ------ | --------------------------------- |
+| v0.10.11 | Feb 25 | Gemini 3.1 model rename           |
+| v0.10.10 | Feb 25 | Routing debug headers             |
+| v0.10.9  | Feb 24 | Agentic mode false trigger fix    |
+| v0.10.8  | Feb 24 | OpenClaw tool API contract fix    |
+| v0.10.7  | Feb 24 | Partner tools + wallet safety     |
+| v0.10.6  | Feb 23 | Partner API proxy + cost tracking |

@@ -1154,7 +1154,11 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
     },
     MEDIUM: {
       primary: "moonshot/kimi-k2.5", // $0.50/$2.40 - strong tool use, handles function calls correctly
-      fallback: ["anthropic/claude-haiku-4.5", "deepseek/deepseek-chat", "xai/grok-4-1-fast-non-reasoning"],
+      fallback: [
+        "anthropic/claude-haiku-4.5",
+        "deepseek/deepseek-chat",
+        "xai/grok-4-1-fast-non-reasoning",
+      ],
     },
     COMPLEX: {
       primary: "anthropic/claude-sonnet-4.6",

@@ -1673,8 +1673,7 @@ async function proxyRequest(
         const debugPrompt = lastContent.slice("/debug".length).trim() || "hello";
         const messages = parsed.messages as Array<{ role: string; content: unknown }>;
         const systemMsg = messages?.find((m) => m.role === "system");
-        const systemPrompt =
-          typeof systemMsg?.content === "string" ? systemMsg.content : undefined;
+        const systemPrompt = typeof systemMsg?.content === "string" ? systemMsg.content : undefined;
         const fullText = `${systemPrompt ?? ""} ${debugPrompt}`;
         const estimatedTokens = Math.ceil(fullText.length / 4);
 

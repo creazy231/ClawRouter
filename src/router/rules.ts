@@ -280,6 +280,7 @@ export function classifyByRules(
       confidence: Math.max(confidence, 0.85),
       signals,
       agenticScore,
+      dimensions,
     };
   }
 
@@ -310,10 +311,10 @@ export function classifyByRules(
 
   // If confidence is below threshold → ambiguous
   if (confidence < config.confidenceThreshold) {
-    return { score: weightedScore, tier: null, confidence, signals, agenticScore };
+    return { score: weightedScore, tier: null, confidence, signals, agenticScore, dimensions };
   }
 
-  return { score: weightedScore, tier, confidence, signals, agenticScore };
+  return { score: weightedScore, tier, confidence, signals, agenticScore, dimensions };
 }
 
 /**
