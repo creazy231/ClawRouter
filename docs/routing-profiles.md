@@ -23,7 +23,7 @@ Use `blockrun/auto` for the best quality/price balance.
 | --------- | ----------------------------- | ----- | ------ |
 | SIMPLE    | moonshot/kimi-k2.5            | $0.60 | $3.00  |
 | MEDIUM    | xai/grok-code-fast-1          | $0.20 | $1.50  |
-| COMPLEX   | google/gemini-3.1-pro-preview | $2.00 | $12.00 |
+| COMPLEX   | google/gemini-3.1-pro         | $2.00 | $12.00 |
 | REASONING | xai/grok-4-1-fast-reasoning   | $0.20 | $0.50  |
 
 ---

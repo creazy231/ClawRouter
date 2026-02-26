@@ -120,7 +120,7 @@ Request → Weighted Scorer (15 dimensions) → Tier → Cheapest Model → Resp
 | claude-sonnet-4.6       | $3.00     | $15.00     | 200K    |    \*     |
 | claude-haiku-4.5        | $1.00     | $5.00      | 200K    |           |
 | **Google**              |           |            |         |           |
-| gemini-3.1-pro-preview  | $2.00     | $12.00     | 1M      |    \*     |
+| gemini-3.1-pro          | $2.00     | $12.00     | 1M      |    \*     |
 | gemini-3-pro-preview    | $2.00     | $12.00     | 1M      |    \*     |
 | gemini-3-flash-preview  | $0.50     | $3.00      | 1M      |           |
 | gemini-2.5-pro          | $1.25     | $10.00     | 1M      |    \*     |
