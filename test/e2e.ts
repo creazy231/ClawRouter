@@ -328,6 +328,162 @@ const config = DEFAULT_ROUTING_CONFIG;
   );
 }
 
+// Issue #50: Large OpenClaw-style system prompt (~6000 tokens) should NOT dominate scoring
+// Previously all requests scored ~0.47 regardless of user intent because the system prompt
+// contained keywords matching nearly every scoring dimension.
+{
+  console.log("\nIssue #50: OpenClaw-scale system prompt (should NOT dominate scoring):");
+
+  // Simulate a realistic OpenClaw system prompt with tool definitions, workspace files,
+  // skill descriptions, and behavioral rules — all containing scorer keywords
+  const openClawSystemPrompt = `You are an AI assistant with access to the following tools:
+
+Tool: run - Execute shell commands in the user's terminal. Use this to run tests, build projects, or execute scripts.
+  Parameters: command (string, required), timeout (number, optional)
+
+Tool: edit - Edit files in the workspace. Supports creating, modifying, and deleting files.
+  Parameters: file_path (string), content (string), mode (enum: create, replace, delete)
+
+Tool: test - Run the project's test suite. Automatically detects the testing framework (jest, vitest, pytest, etc).
+  Parameters: pattern (string, optional), watch (boolean, optional)
+
+Tool: deploy - Deploy the application to staging or production environments.
+  Parameters: environment (enum: staging, production), config (object, optional)
+
+Tool: search - Search for files, functions, or text patterns across the codebase.
+  Parameters: query (string), type (enum: file, function, text), regex (boolean)
+
+Tool: fix - Apply automated fixes for linting errors, formatting issues, or simple bugs.
+  Parameters: file_path (string), rule (string, optional)
+
+Tool: build - Build the project using the detected build system (webpack, vite, esbuild, etc).
+  Parameters: mode (enum: development, production), clean (boolean)
+
+Tool: install - Install project dependencies using the detected package manager.
+  Parameters: packages (string[], optional), dev (boolean, optional)
+
+Tool: verify - Verify the integrity of the build output and check for common issues.
+  Parameters: strict (boolean, optional)
+
+Tool: check - Run static analysis and type checking on the codebase.
+  Parameters: fix (boolean, optional)
+
+Tool: create - Create new files, components, or project structures from templates.
+  Parameters: template (string), name (string), path (string, optional)
+
+Tool: analyze - Analyze code complexity, dependencies, and architecture patterns.
+  Parameters: scope (string, optional), format (enum: json, table, markdown)
+
+Tool: generate - Generate code, documentation, or configuration files.
+  Parameters: type (string), spec (string)
+
+Tool: refactor - Refactor code by extracting functions, renaming symbols, or restructuring modules.
+  Parameters: action (string), target (string)
+
+Tool: optimize - Optimize code performance, bundle size, or resource usage.
+  Parameters: target (string), strategy (string, optional)
+
+Tool: debug - Start a debugging session with breakpoints and step-through execution.
+  Parameters: file_path (string), line (number, optional)
+
+Tool: document - Generate or update documentation for functions, classes, or modules.
+  Parameters: scope (string), format (enum: jsdoc, markdown, yaml)
+
+Tool: schema - Generate or validate JSON Schema, OpenAPI specs, or database schemas.
+  Parameters: input (string), output_format (string)
+
+Tool: migrate - Run database migrations or upgrade configuration formats.
+  Parameters: direction (enum: up, down), steps (number, optional)
+
+Tool: monitor - Monitor application logs, metrics, and health status.
+  Parameters: service (string), duration (number, optional)
+
+Workspace Files:
+- AGENTS.md: Defines agent behavior, tool usage patterns, and decision-making guidelines.
+  Contains step-by-step instructions for handling complex multi-step tasks.
+  Includes algorithm descriptions for distributed task scheduling.
+
+- SOUL.md: Core behavioral rules. Don't make assumptions. Avoid unnecessary changes.
+  At most 3 file edits per turn. Within the scope of the current task only.
+  Limit output to what was explicitly requested.
+
+- TOOLS.md: Detailed tool documentation with examples.
+  "Use the edit tool to create new files..."
+  "Use the build tool to compile the project..."
+  "import { something } from './module'"
+  "async function handleRequest() { ... }"
+  "export default class Controller { ... }"
+
+Skills:
+1. Code Review - Analyze code quality, suggest improvements, and check for common patterns.
+   Step 1: Read the file. Step 2: Identify issues. Step 3: Generate suggestions.
+2. Architecture Design - Design system architecture with diagrams and documentation.
+   Covers: microservices, event sourcing, CQRS, distributed systems, kubernetes deployment.
+3. Performance Optimization - Profile and optimize application performance.
+   Analyze algorithm complexity, identify bottlenecks, implement caching strategies.
+
+Rules:
+- Always confirm before applying destructive changes
+- Don't modify files outside the project directory
+- Avoid making changes that aren't directly requested
+- Do not add unnecessary dependencies
+- Follow the existing code style and conventions`;
+
+  // Test 1: Simple greeting — score should be much lower than the broken ~0.47
+  // Note: tokenCount dimension legitimately considers total context size (6200 tokens),
+  // so MEDIUM is acceptable. The key is scores now DIFFERENTIATE instead of all being ~0.47.
+  const ocr1 = classifyByRules("What time is it?", openClawSystemPrompt, 6200, config.scoring);
+  assert(
+    ocr1.score < 0.2,
+    `"What time is it?" + OpenClaw prompt → score=${ocr1.score.toFixed(3)} (should be <0.2, was ~0.47 before fix)`,
+  );
+
+  // Test 2: Simple question — same: score should be well below the broken ~0.47
+  const ocr2 = classifyByRules("What's the weather?", openClawSystemPrompt, 6200, config.scoring);
+  assert(
+    ocr2.score < 0.2,
+    `"What's the weather?" + OpenClaw prompt → score=${ocr2.score.toFixed(3)} (should be <0.2, was ~0.47 before fix)`,
+  );
+
+  // Test 3: Complex coding task — should be COMPLEX or higher, not same score as simple
+  const ocr3 = classifyByRules(
+    "Build a React component with TypeScript that implements a sortable data table with pagination, filtering, and async data loading from a REST API",
+    openClawSystemPrompt,
+    6250,
+    config.scoring,
+  );
+  assert(
+    ocr3.score > ocr1.score,
+    `Complex task score (${ocr3.score.toFixed(3)}) > simple task score (${ocr1.score.toFixed(3)}) — scores should differentiate`,
+  );
+
+  // Test 4: Reasoning task — should be REASONING
+  const ocr4 = classifyByRules(
+    "Prove that sqrt(2) is irrational using proof by contradiction, step by step",
+    openClawSystemPrompt,
+    6220,
+    config.scoring,
+  );
+  assert(
+    ocr4.tier === "REASONING",
+    `Reasoning task + OpenClaw prompt → ${ocr4.tier} score=${ocr4.score.toFixed(3)} (should be REASONING)`,
+  );
+
+  // Test 5: Scores should NOT all be the same (~0.47)
+  const scores = [ocr1.score, ocr2.score, ocr3.score, ocr4.score];
+  const uniqueScores = new Set(scores.map((s) => s.toFixed(2)));
+  assert(
+    uniqueScores.size >= 3,
+    `${uniqueScores.size} unique scores out of 4 queries (scores: ${scores.map((s) => s.toFixed(3)).join(", ")}) — should differentiate, not all ~0.47`,
+  );
+
+  // Test 6: Agentic score should be 0 for non-agentic queries
+  assert(
+    ocr1.agenticScore === 0,
+    `"What time is it?" agenticScore=${ocr1.agenticScore} (should be 0, not triggered by system prompt tools)`,
+  );
+}
+
 // Override: large context
 {
   console.log("\nOverride: large context:");
