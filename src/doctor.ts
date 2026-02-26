@@ -5,9 +5,7 @@
  * Works independently of OpenClaw - direct x402 payment to BlockRun API.
  */
 
-import { homedir, platform, arch, freemem, totalmem } from "node:os";
-import { join } from "node:path";
-import { stat, readdir } from "node:fs/promises";
+import { platform, arch, freemem, totalmem } from "node:os";
 import { resolveOrGenerateWalletKey, WALLET_FILE } from "./auth.js";
 import { BalanceMonitor } from "./balance.js";
 import { getStats } from "./stats.js";
