@@ -15,6 +15,14 @@
 
 ## Bug Fixes
 
+### baselineCost always $0 — savings metric broken (v0.10.17)
+
+**Problem:** ~66% of ClawRouter usage log entries showed `baselineCost: 0` and `savings: 0%`. When the baseline model (`anthropic/claude-opus-4.6`) wasn't found in the dynamic pricing map, the fallback was `?? 0` — silently zeroing out the savings calculation.
+
+**Fix:** Added hardcoded fallback pricing constants (`$5.00/$25.00 per 1M tokens`) matching Claude Opus 4.6 rates. When the baseline model is missing from the pricing map, the fallback ensures savings always calculates correctly.
+
+---
+
 ### Model keeps jumping back to gemini-flash (v0.10.17)
 
 **Problem:** Every message in a conversation was routed from scratch. Primary model hits rate limit → falls back to gemini-flash. Next message starts fresh → falls back again. Setting a primary in the dashboard had no effect mid-conversation.
