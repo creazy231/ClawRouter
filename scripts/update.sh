@@ -139,6 +139,60 @@ if (!store.profiles[profileKey]) {
 echo "→ Cleaning models cache..."
 rm -f ~/.openclaw/agents/*/agent/models.json 2>/dev/null || true
 
+# ── Step 8: Migrate allowlist (remove blockrun-only filter) ────
+echo "→ Migrating model allowlist..."
+node -e "
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
+const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+
+if (!fs.existsSync(configPath)) {
+  console.log('  No config file found, skipping');
+  process.exit(0);
+}
+
+try {
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const allowlist = config?.agents?.defaults?.models;
+  if (!allowlist || typeof allowlist !== 'object') {
+    console.log('  No allowlist found, skipping');
+    process.exit(0);
+  }
+
+  const keys = Object.keys(allowlist);
+  if (keys.length === 0) {
+    console.log('  Allowlist already empty (allow all)');
+    process.exit(0);
+  }
+
+  const blockrunKeys = keys.filter(k => k.startsWith('blockrun/'));
+  if (blockrunKeys.length === 0) {
+    console.log('  No blockrun entries in allowlist, skipping');
+    process.exit(0);
+  }
+
+  // Remove blockrun entries
+  for (const k of blockrunKeys) {
+    delete allowlist[k];
+  }
+
+  // Atomic write
+  const tmpPath = configPath + '.tmp.' + process.pid;
+  fs.writeFileSync(tmpPath, JSON.stringify(config, null, 2));
+  fs.renameSync(tmpPath, configPath);
+
+  const remaining = Object.keys(allowlist).length;
+  if (remaining === 0) {
+    console.log('  Cleared blockrun-only allowlist (all providers now visible)');
+  } else {
+    console.log('  Removed ' + blockrunKeys.length + ' blockrun entries (' + remaining + ' user entries kept)');
+  }
+} catch (err) {
+  console.log('  Migration skipped: ' + err.message);
+}
+"
+
 # ── Summary ─────────────────────────────────────────────────────
 echo ""
 echo "✓ ClawRouter updated successfully!"

@@ -253,65 +253,11 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
     needsWrite = true;
   }
 
-  // Add key model aliases to allowlist for /model picker visibility
-  // Only add essential aliases, not all 50+ models to avoid config pollution
-  const KEY_MODEL_ALIASES = [
-    { id: "auto", alias: "auto" },
-    { id: "eco", alias: "eco" },
-    { id: "premium", alias: "premium" },
-    { id: "free", alias: "free" },
-    { id: "sonnet", alias: "sonnet-4.6" },
-    { id: "opus", alias: "opus" },
-    { id: "haiku", alias: "haiku" },
-    { id: "gpt5", alias: "gpt5" },
-    { id: "codex", alias: "codex" },
-    { id: "grok-fast", alias: "grok-fast" },
-    { id: "grok-code", alias: "grok-code" },
-    { id: "deepseek", alias: "deepseek" },
-    { id: "reasoner", alias: "reasoner" },
-    { id: "kimi", alias: "kimi" },
-    { id: "minimax", alias: "minimax" },
-    { id: "gemini", alias: "gemini" },
-  ];
-
-  // Deprecated aliases to remove from config (cleaned up from picker)
-  const DEPRECATED_ALIASES = [
-    "blockrun/nvidia",
-    "blockrun/gpt",
-    "blockrun/o3",
-    "blockrun/grok",
-    "blockrun/mini",
-    "blockrun/flash", // removed from picker - use gemini instead
-  ];
-
-  if (!defaults.models) {
-    defaults.models = {};
-    needsWrite = true;
-  }
-
-  const allowlist = defaults.models as Record<string, unknown>;
-
-  // Remove deprecated aliases from config
-  for (const deprecated of DEPRECATED_ALIASES) {
-    if (allowlist[deprecated]) {
-      delete allowlist[deprecated];
-      logger.info(`Removed deprecated model alias: ${deprecated}`);
-      needsWrite = true;
-    }
-  }
-
-  // Add current aliases (and update stale aliases)
-  for (const m of KEY_MODEL_ALIASES) {
-    const fullId = `blockrun/${m.id}`;
-    const existing = allowlist[fullId] as Record<string, unknown> | undefined;
-    if (!existing) {
-      allowlist[fullId] = { alias: m.alias };
-      needsWrite = true;
-    } else if (existing.alias !== m.alias) {
-      existing.alias = m.alias;
-      needsWrite = true;
-    }
-  }
+  // NOTE: We intentionally do NOT inject entries into agents.defaults.models (the allowlist).
+  // The allowlist controls which models appear in the /model picker. When non-empty, it acts
+  // as a filter that hides all models not in the list. Populating it with blockrun-only entries
+  // would prevent users from seeing/selecting models from other providers (e.g. OpenRouter).
+  // BlockRun models are already discoverable via providers.blockrun.models registration.
 
   // Write config file if any changes were made
   // Use atomic write (temp file + rename) to prevent partial writes that could
