@@ -6,6 +6,8 @@
  * instead of re-routing each request.
  */
 
+import { createHash } from "node:crypto";
+
 export type SessionEntry = {
   model: string;
   tier: string;
@@ -200,6 +202,5 @@ export function deriveSessionId(
 
   // 8-char hex prefix of SHA-256 — short enough for logs, collision-resistant
   // enough for session tracking within a single gateway instance.
-  const { createHash } = require("node:crypto") as typeof import("node:crypto");
   return createHash("sha256").update(content).digest("hex").slice(0, 8);
 }
