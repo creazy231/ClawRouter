@@ -29,7 +29,10 @@ const prompt =
   typeof rawPrompt === "string"
     ? rawPrompt
     : Array.isArray(rawPrompt)
-      ? rawPrompt.filter((b) => b.type === "text").map((b) => b.text ?? "").join(" ")
+      ? rawPrompt
+          .filter((b) => b.type === "text")
+          .map((b) => b.text ?? "")
+          .join(" ")
       : "";
 ```
 

@@ -1895,9 +1895,7 @@ async function proxyRequest(
           hasTools = Array.isArray(tools) && tools.length > 0;
 
           if (hasTools && tools) {
-            console.log(
-              `[ClawRouter] Tools detected (${tools.length}), agentic mode via keywords`,
-            );
+            console.log(`[ClawRouter] Tools detected (${tools.length}), agentic mode via keywords`);
           }
 
           // Always route based on current request content
