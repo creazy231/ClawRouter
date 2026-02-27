@@ -37,6 +37,7 @@ import {
   type RoutingDecision,
   type RoutingConfig,
   type ModelPricing,
+  type Tier,
 } from "./router/index.js";
 import { classifyByRules } from "./router/rules.js";
 import {
@@ -1641,7 +1642,16 @@ async function proxyRequest(
         ? (parsed.messages as Array<{ role: string; content: unknown }>)
         : [];
       const lastUserMsg = [...parsedMessages].reverse().find((m) => m.role === "user");
-      const lastContent = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
+      const rawLastContent = lastUserMsg?.content;
+      const lastContent =
+        typeof rawLastContent === "string"
+          ? rawLastContent
+          : Array.isArray(rawLastContent)
+            ? (rawLastContent as Array<{ type: string; text?: string }>)
+                .filter((b) => b.type === "text")
+                .map((b) => b.text ?? "")
+                .join(" ")
+            : "";
 
       // --- Session Journal: Inject context if needed ---
       // Check if the last user message asks about past work
@@ -1864,57 +1874,88 @@ async function proxyRequest(
             ? sessionStore.getSession(effectiveSessionId)
             : undefined;
 
-          if (existingSession) {
-            // Use the session's pinned model instead of re-routing
+          // Extract prompt from last user message (handles both string and Anthropic array content)
+          const rawPrompt = lastUserMsg?.content;
+          const prompt =
+            typeof rawPrompt === "string"
+              ? rawPrompt
+              : Array.isArray(rawPrompt)
+                ? (rawPrompt as Array<{ type: string; text?: string }>)
+                    .filter((b) => b.type === "text")
+                    .map((b) => b.text ?? "")
+                    .join(" ")
+                : "";
+          const systemMsg = parsedMessages.find((m) => m.role === "system");
+          const systemPrompt =
+            typeof systemMsg?.content === "string" ? systemMsg.content : undefined;
+
+          // Tool detection (must run regardless of session state for fallback chain filtering)
+          // Agentic mode is triggered by keyword-based detection (agenticScore >= 0.6)
+          const tools = parsed.tools as unknown[] | undefined;
+          hasTools = Array.isArray(tools) && tools.length > 0;
+
+          if (hasTools && tools) {
             console.log(
-              `[ClawRouter] Session ${effectiveSessionId?.slice(0, 8)}... using pinned model: ${existingSession.model}`,
+              `[ClawRouter] Tools detected (${tools.length}), agentic mode via keywords`,
             );
-            parsed.model = existingSession.model;
-            modelId = existingSession.model;
-            bodyModified = true;
-            sessionStore.touchSession(effectiveSessionId!);
-          } else {
-            // No session or expired - route normally
-            // Extract prompt from messages
-            type ChatMessage = { role: string; content: string };
-            const messages = parsed.messages as ChatMessage[] | undefined;
-            let lastUserMsg: ChatMessage | undefined;
-            if (messages) {
-              for (let i = messages.length - 1; i >= 0; i--) {
-                if (messages[i].role === "user") {
-                  lastUserMsg = messages[i];
-                  break;
-                }
-              }
-            }
-            const systemMsg = messages?.find((m: ChatMessage) => m.role === "system");
-            const prompt = typeof lastUserMsg?.content === "string" ? lastUserMsg.content : "";
-            const systemPrompt =
-              typeof systemMsg?.content === "string" ? systemMsg.content : undefined;
+          }
 
-            // Tool detection no longer forces agentic mode
-            // Agentic mode is now triggered by keyword-based detection (agenticScore >= 0.6)
-            // This allows simple queries with tools to use cheaper models
-            const tools = parsed.tools as unknown[] | undefined;
-            hasTools = Array.isArray(tools) && tools.length > 0;
+          // Always route based on current request content
+          routingDecision = route(prompt, systemPrompt, maxTokens, {
+            ...routerOpts,
+            routingProfile: routingProfile ?? undefined,
+          });
 
-            if (hasTools && tools) {
+          if (existingSession) {
+            // Never downgrade: only upgrade the session when the current request needs a higher
+            // tier. This fixes the OpenClaw startup-message bias (the startup message always
+            // scores low-complexity, which previously pinned all subsequent real queries to a
+            // cheap model) while still preventing mid-task model switching on simple follow-ups.
+            const tierRank: Record<string, number> = {
+              SIMPLE: 0,
+              MEDIUM: 1,
+              COMPLEX: 2,
+              REASONING: 3,
+            };
+            const existingRank = tierRank[existingSession.tier] ?? 0;
+            const newRank = tierRank[routingDecision.tier] ?? 0;
+
+            if (newRank > existingRank) {
+              // Current request needs higher capability — upgrade the session
               console.log(
-                `[ClawRouter] Tools detected (${tools.length}), agentic mode via keywords`,
+                `[ClawRouter] Session ${effectiveSessionId?.slice(0, 8)}... upgrading: ${existingSession.tier} → ${routingDecision.tier} (${routingDecision.model})`,
               );
+              parsed.model = routingDecision.model;
+              modelId = routingDecision.model;
+              bodyModified = true;
+              if (effectiveSessionId) {
+                sessionStore.setSession(
+                  effectiveSessionId,
+                  routingDecision.model,
+                  routingDecision.tier,
+                );
+              }
+            } else {
+              // Keep existing higher-tier model (prevent downgrade mid-task)
+              console.log(
+                `[ClawRouter] Session ${effectiveSessionId?.slice(0, 8)}... keeping pinned model: ${existingSession.model} (${existingSession.tier} >= ${routingDecision.tier})`,
+              );
+              parsed.model = existingSession.model;
+              modelId = existingSession.model;
+              bodyModified = true;
+              sessionStore.touchSession(effectiveSessionId!);
+              // Reflect the actual model used in the routing decision for logging/fallback
+              routingDecision = {
+                ...routingDecision,
+                model: existingSession.model,
+                tier: existingSession.tier as Tier,
+              };
             }
-
-            routingDecision = route(prompt, systemPrompt, maxTokens, {
-              ...routerOpts,
-              routingProfile: routingProfile ?? undefined,
-            });
-
-            // Replace model in body
+          } else {
+            // No session — pin this routing decision for future requests
             parsed.model = routingDecision.model;
             modelId = routingDecision.model;
             bodyModified = true;
-
-            // Pin this model to the session for future requests
             if (effectiveSessionId) {
               sessionStore.setSession(
                 effectiveSessionId,
@@ -1925,9 +1966,9 @@ async function proxyRequest(
                 `[ClawRouter] Session ${effectiveSessionId.slice(0, 8)}... pinned to model: ${routingDecision.model}`,
               );
             }
-
-            options.onRouted?.(routingDecision);
           }
+
+          options.onRouted?.(routingDecision);
         }
       }
 
