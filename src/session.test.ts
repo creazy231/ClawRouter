@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveSessionId, DEFAULT_SESSION_CONFIG } from "./session.js";
+import { deriveSessionId, DEFAULT_SESSION_CONFIG, SessionStore } from "./session.js";
 
 describe("deriveSessionId", () => {
   it("returns same ID for same first user message", () => {
@@ -50,5 +50,33 @@ describe("deriveSessionId", () => {
 describe("DEFAULT_SESSION_CONFIG", () => {
   it("has session persistence enabled by default", () => {
     expect(DEFAULT_SESSION_CONFIG.enabled).toBe(true);
+  });
+});
+
+describe("SessionStore.setSession", () => {
+  it("updates pinned model when fallback model differs from routing decision", () => {
+    const store = new SessionStore();
+    const sessionId = "abc12345";
+
+    // First call: routing decision pins kimi-k2.5
+    store.setSession(sessionId, "moonshot/kimi-k2.5", "MEDIUM");
+    expect(store.getSession(sessionId)?.model).toBe("moonshot/kimi-k2.5");
+
+    // Second call: actual model used was fallback (gemini-flash)
+    store.setSession(sessionId, "google/gemini-2.5-flash-lite", "MEDIUM");
+    expect(store.getSession(sessionId)?.model).toBe("google/gemini-2.5-flash-lite");
+  });
+
+  it("subsequent requests use the fallback model when pinned", () => {
+    const store = new SessionStore();
+    const sessionId = "abc12345";
+
+    store.setSession(sessionId, "moonshot/kimi-k2.5", "MEDIUM");
+    store.setSession(sessionId, "google/gemini-2.5-flash-lite", "MEDIUM");
+
+    // Next request reads pinned model — should get the fallback, not the primary
+    const pinned = store.getSession(sessionId);
+    expect(pinned?.model).toBe("google/gemini-2.5-flash-lite");
+    expect(pinned?.requestCount).toBe(2);
   });
 });

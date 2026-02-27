@@ -1623,8 +1623,10 @@ async function proxyRequest(
   let accumulatedContent = ""; // For session journal event extraction
   const isChatCompletion = req.url?.includes("/chat/completions");
 
-  // Extract session ID early for journal operations
+  // Extract session ID early for journal operations (header-only at this point)
   const sessionId = getSessionId(req.headers as Record<string, string | string[] | undefined>);
+  // Full session ID (header + content-derived) — populated once messages are parsed
+  let effectiveSessionId: string | undefined = sessionId;
 
   if (isChatCompletion && body.length > 0) {
     try {
@@ -1855,20 +1857,22 @@ async function proxyRequest(
           // Check for session persistence - use pinned model if available
           // Fall back to deriving a session ID from message content when OpenClaw
           // doesn't send an explicit x-session-id header (the default behaviour).
-          const sessionId =
+          effectiveSessionId =
             getSessionId(req.headers as Record<string, string | string[] | undefined>) ??
             deriveSessionId(parsedMessages);
-          const existingSession = sessionId ? sessionStore.getSession(sessionId) : undefined;
+          const existingSession = effectiveSessionId
+            ? sessionStore.getSession(effectiveSessionId)
+            : undefined;
 
           if (existingSession) {
             // Use the session's pinned model instead of re-routing
             console.log(
-              `[ClawRouter] Session ${sessionId?.slice(0, 8)}... using pinned model: ${existingSession.model}`,
+              `[ClawRouter] Session ${effectiveSessionId?.slice(0, 8)}... using pinned model: ${existingSession.model}`,
             );
             parsed.model = existingSession.model;
             modelId = existingSession.model;
             bodyModified = true;
-            sessionStore.touchSession(sessionId!);
+            sessionStore.touchSession(effectiveSessionId!);
           } else {
             // No session or expired - route normally
             // Extract prompt from messages
@@ -1911,10 +1915,14 @@ async function proxyRequest(
             bodyModified = true;
 
             // Pin this model to the session for future requests
-            if (sessionId) {
-              sessionStore.setSession(sessionId, routingDecision.model, routingDecision.tier);
+            if (effectiveSessionId) {
+              sessionStore.setSession(
+                effectiveSessionId,
+                routingDecision.model,
+                routingDecision.tier,
+              );
               console.log(
-                `[ClawRouter] Session ${sessionId.slice(0, 8)}... pinned to model: ${routingDecision.model}`,
+                `[ClawRouter] Session ${effectiveSessionId.slice(0, 8)}... pinned to model: ${routingDecision.model}`,
               );
             }
 
@@ -2309,6 +2317,16 @@ async function proxyRequest(
         savings: newCosts.savings,
       };
       options.onRouted?.(routingDecision);
+
+      // Update session pin to the actual model used — ensures the next request in
+      // this conversation starts from the fallback model rather than retrying the
+      // primary and falling back again (prevents the "model keeps jumping" issue).
+      if (effectiveSessionId) {
+        sessionStore.setSession(effectiveSessionId, actualModelUsed, routingDecision.tier);
+        console.log(
+          `[ClawRouter] Session ${effectiveSessionId.slice(0, 8)}... updated pin to fallback: ${actualModelUsed}`,
+        );
+      }
     }
 
     // --- Handle case where all models failed ---
