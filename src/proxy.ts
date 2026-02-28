@@ -2316,9 +2316,7 @@ async function proxyRequest(
         if (isPaymentErr && tryModel !== FREE_MODEL) {
           const freeIdx = modelsToTry.indexOf(FREE_MODEL);
           if (freeIdx > i + 1) {
-            console.log(
-              `[ClawRouter] Payment error — skipping to free model: ${FREE_MODEL}`,
-            );
+            console.log(`[ClawRouter] Payment error — skipping to free model: ${FREE_MODEL}`);
             i = freeIdx - 1; // loop will increment to freeIdx
             continue;
           }

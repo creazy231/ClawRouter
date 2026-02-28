@@ -9,6 +9,7 @@ ClawRouter was injecting `blockrun/*` entries into the OpenClaw model allowlist 
 ### Root cause
 
 OpenClaw's `agents.defaults.models` works as an **allowlist filter**:
+
 - **Empty** `{}` = show all models from all providers
 - **Non-empty** = only show models in the list
 
