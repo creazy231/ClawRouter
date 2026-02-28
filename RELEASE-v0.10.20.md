@@ -1,6 +1,6 @@
-# ClawRouter v0.10.20 — Feb 27, 2026
+# ClawRouter v0.10.20/21 — Feb 27, 2026
 
-## Fix: Stop hijacking model picker when users switch to other providers
+## Fix 1: Stop hijacking model picker when users switch to other providers
 
 ClawRouter was injecting `blockrun/*` entries into the OpenClaw model allowlist (`agents.defaults.models`) on every startup. This had the unintended effect of **hiding all non-BlockRun models** from the `/model` picker — even when users had configured and switched to other providers like OpenRouter.
 
@@ -37,6 +37,31 @@ After (v0.10.20):
 2. **Migration in `update.sh`** — cleans up existing `blockrun/*` entries for upgrading users, restoring "allow all" mode
 
 BlockRun models remain fully discoverable through the standard provider registration (`providers.blockrun.models` with 63 models). The allowlist is now user-controlled.
+
+---
+
+## Fix 2: Silent fallback to free model on payment failure (v0.10.21)
+
+When a wallet has insufficient funds, ClawRouter now **silently falls back to the free model** instead of showing "Payment verification failed".
+
+### Before
+
+```
+User sends request → paid model fails (no funds) → tries next paid model
+→ also fails → ... → "Payment verification failed" error shown to user
+```
+
+### After
+
+```
+User sends request → paid model fails (no funds) → skip remaining paid models
+→ immediately try nvidia/gpt-oss-120b (free) → user gets a response
+```
+
+Two changes:
+
+1. **Free model always in fallback chain** — `nvidia/gpt-oss-120b` is appended as last-resort to every fallback chain (routing profiles + explicit models)
+2. **Payment error fast-path** — when a payment error is detected, skip remaining paid models and jump straight to the free model. No point trying 4 more paid models with the same empty wallet.
 
 ---
 

@@ -2253,13 +2253,15 @@ async function proxyRequest(
       // Deprioritize rate-limited models (put them at the end)
       modelsToTry = prioritizeNonRateLimited(modelsToTry);
     } else {
-      // For explicit model requests, add free model as emergency fallback
-      // in case the primary model fails due to insufficient funds mid-request
-      if (modelId && modelId !== FREE_MODEL) {
-        modelsToTry = [modelId, FREE_MODEL];
-      } else {
-        modelsToTry = modelId ? [modelId] : [];
-      }
+      // For explicit model requests, use the requested model
+      modelsToTry = modelId ? [modelId] : [];
+    }
+
+    // Always ensure free model is the last-resort fallback.
+    // If all paid models fail (insufficient funds, rate limits, etc.),
+    // the user still gets a response instead of an error.
+    if (!modelsToTry.includes(FREE_MODEL)) {
+      modelsToTry.push(FREE_MODEL);
     }
 
     // --- Fallback loop: try each model until success ---
@@ -2304,6 +2306,24 @@ async function proxyRequest(
         if (result.errorStatus === 429) {
           markRateLimited(tryModel);
         }
+
+        // Payment error (insufficient funds) — skip remaining paid models,
+        // jump straight to free model. No point trying other paid models
+        // with the same empty wallet.
+        const isPaymentErr = /payment.*verification.*failed|insufficient.*funds/i.test(
+          result.errorBody || "",
+        );
+        if (isPaymentErr && tryModel !== FREE_MODEL) {
+          const freeIdx = modelsToTry.indexOf(FREE_MODEL);
+          if (freeIdx > i + 1) {
+            console.log(
+              `[ClawRouter] Payment error — skipping to free model: ${FREE_MODEL}`,
+            );
+            i = freeIdx - 1; // loop will increment to freeIdx
+            continue;
+          }
+        }
+
         console.log(
           `[ClawRouter] Provider error from ${tryModel}, trying fallback: ${result.errorBody?.slice(0, 100)}`,
         );
