@@ -1049,12 +1049,11 @@ async function proxyPartnerRequest(
 }
 
 /**
- * Upload a base64 data URI to telegra.ph and return a public URL.
- * Used for image generation responses from models that return data URIs
- * (e.g. Google/nano-banana) instead of hosted URLs.
+ * Upload a base64 data URI to catbox.moe and return a public URL.
+ * Google image models (nano-banana) return data URIs instead of hosted URLs,
+ * which breaks Telegram and other clients that can't render raw base64.
  */
 async function uploadDataUriToHost(dataUri: string): Promise<string> {
-  // Parse data URI: data:image/png;base64,iVBORw0KGgo...
   const match = dataUri.match(/^data:(image\/\w+);base64,(.+)$/);
   if (!match) throw new Error("Invalid data URI format");
   const [, mimeType, b64Data] = match;
@@ -1064,21 +1063,20 @@ async function uploadDataUriToHost(dataUri: string): Promise<string> {
   const blob = new Blob([buffer], { type: mimeType });
 
   const form = new FormData();
-  form.append("file", blob, `image.${ext}`);
+  form.append("reqtype", "fileupload");
+  form.append("fileToUpload", blob, `image.${ext}`);
 
-  const resp = await fetch("https://telegra.ph/upload", {
+  const resp = await fetch("https://catbox.moe/user/api.php", {
     method: "POST",
     body: form,
   });
 
-  if (!resp.ok) throw new Error(`telegra.ph upload failed: HTTP ${resp.status}`);
-
-  const result = (await resp.json()) as Array<{ src?: string }> | { error?: string };
-  if (Array.isArray(result) && result[0]?.src) {
-    return `https://telegra.ph${result[0].src}`;
+  if (!resp.ok) throw new Error(`catbox.moe upload failed: HTTP ${resp.status}`);
+  const result = await resp.text();
+  if (result.startsWith("https://")) {
+    return result.trim();
   }
-  const errMsg = !Array.isArray(result) && result.error ? result.error : "unknown error";
-  throw new Error(`telegra.ph upload failed: ${errMsg}`);
+  throw new Error(`catbox.moe upload failed: ${result}`);
 }
 
 /**
@@ -1961,8 +1959,6 @@ async function proxyRequest(
               const lines: string[] = [];
               for (const img of images) {
                 if (img.url) {
-                  // Data URIs (from Google models) must be uploaded to get a public URL
-                  // Telegram and other clients can't render raw base64 data URIs
                   if (img.url.startsWith("data:")) {
                     try {
                       const hostedUrl = await uploadDataUriToHost(img.url);
