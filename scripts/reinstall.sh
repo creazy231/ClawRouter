@@ -255,18 +255,14 @@ try {
     console.log('  Added minimax model to blockrun provider catalog');
   }
 
-  // Ensure minimax alias is present in model picker allowlist
-  if (!config.agents) config.agents = {};
-  if (!config.agents.defaults) config.agents.defaults = {};
-  if (!config.agents.defaults.models || typeof config.agents.defaults.models !== 'object') {
-    config.agents.defaults.models = {};
-    changed = true;
-  }
-  const allowlist = config.agents.defaults.models;
-  if (!allowlist['blockrun/minimax'] || allowlist['blockrun/minimax'].alias !== 'minimax') {
-    allowlist['blockrun/minimax'] = { alias: 'minimax' };
-    changed = true;
-    console.log('  Added minimax to model picker allowlist');
+  // Only add minimax alias if user already has an allowlist (don't create one from scratch)
+  if (config.agents?.defaults?.models && typeof config.agents.defaults.models === 'object' && Object.keys(config.agents.defaults.models).length > 0) {
+    const allowlist = config.agents.defaults.models;
+    if (!allowlist['blockrun/minimax'] || allowlist['blockrun/minimax'].alias !== 'minimax') {
+      allowlist['blockrun/minimax'] = { alias: 'minimax' };
+      changed = true;
+      console.log('  Added minimax to existing model allowlist');
+    }
   }
 
   if (changed) {
