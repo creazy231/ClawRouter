@@ -237,7 +237,7 @@ try {
     'auto', 'free', 'eco', 'premium',
     'anthropic/claude-sonnet-4.6', 'anthropic/claude-opus-4.6', 'anthropic/claude-haiku-4.5',
     'openai/gpt-5.2', 'openai/gpt-4o', 'openai/o3',
-    'google/gemini-2.5-pro', 'google/gemini-2.5-flash',
+    'google/gemini-3.1-pro', 'google/gemini-3-flash-preview',
     'deepseek/deepseek-chat', 'moonshot/kimi-k2.5',
     'xai/grok-3', 'minimax/minimax-m2.5'
   ];
