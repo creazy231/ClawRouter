@@ -211,6 +211,7 @@ USDC stays in your wallet until spent — non-custodial. Price is visible in the
 - **Coinbase:** Buy USDC, send to Base
 - **Bridge:** Move USDC from any chain to Base
 - **CEX:** Withdraw USDC to Base network
+- **Credit card:** Don't have USDC? Reach out to [@bc1max on Telegram](https://t.me/bc1max) — we accept credit card payments
 
 ---
 
