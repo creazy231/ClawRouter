@@ -30,7 +30,6 @@ Usage:
   clawrouter doctor [opus] [question]
   clawrouter partners [test]
   clawrouter report [daily|weekly|monthly] [--json]
-  clawrouter report [daily
 
 Options:
   --version, -v     Show version number
