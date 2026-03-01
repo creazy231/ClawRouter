@@ -89,13 +89,13 @@ Generate images directly from chat with `/imagegen`:
 /imagegen --model banana-pro --size 2048x2048 mountain landscape
 ```
 
-| Model         | Provider               | Price       | Max Size  |
-| ------------- | ---------------------- | ----------- | --------- |
-| `nano-banana` | Google Gemini Flash    | $0.05/image | 1024x1024 |
-| `banana-pro`  | Google Gemini Pro      | $0.10/image | 4096x4096 |
-| `dall-e-3`    | OpenAI DALL-E 3        | $0.04/image | 1792x1024 |
-| `gpt-image`   | OpenAI GPT Image 1     | $0.02/image | 1536x1024 |
-| `flux`        | Black Forest Flux 1.1  | $0.04/image | 1024x1024 |
+| Model         | Provider              | Price       | Max Size  |
+| ------------- | --------------------- | ----------- | --------- |
+| `nano-banana` | Google Gemini Flash   | $0.05/image | 1024x1024 |
+| `banana-pro`  | Google Gemini Pro     | $0.10/image | 4096x4096 |
+| `dall-e-3`    | OpenAI DALL-E 3       | $0.04/image | 1792x1024 |
+| `gpt-image`   | OpenAI GPT Image 1    | $0.02/image | 1536x1024 |
+| `flux`        | Black Forest Flux 1.1 | $0.04/image | 1024x1024 |
 
 Default model: `nano-banana`. Images are returned as hosted URLs for compatibility with Telegram, Discord, and other clients.
 

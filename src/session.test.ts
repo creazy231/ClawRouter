@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveSessionId, DEFAULT_SESSION_CONFIG, SessionStore, hashRequestContent } from "./session.js";
+import {
+  deriveSessionId,
+  DEFAULT_SESSION_CONFIG,
+  SessionStore,
+  hashRequestContent,
+} from "./session.js";
 
 describe("deriveSessionId", () => {
   it("returns same ID for same first user message", () => {
@@ -97,7 +102,7 @@ describe("SessionStore.recordRequestHash", () => {
 
     expect(store.recordRequestHash("s1", "aaa")).toBe(false); // 1st — no prior
     expect(store.recordRequestHash("s1", "aaa")).toBe(false); // 2nd — strikes=1
-    expect(store.recordRequestHash("s1", "aaa")).toBe(true);  // 3rd — strikes=2, trigger!
+    expect(store.recordRequestHash("s1", "aaa")).toBe(true); // 3rd — strikes=2, trigger!
   });
 
   it("resets strikes when a different hash is inserted", () => {

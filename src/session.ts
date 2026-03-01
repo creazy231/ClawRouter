@@ -266,14 +266,9 @@ export function deriveSessionId(
  * Captures: last user message text + tool call names (if any).
  * Normalizes whitespace to avoid false negatives from minor formatting diffs.
  */
-export function hashRequestContent(
-  lastUserContent: string,
-  toolCallNames?: string[],
-): string {
+export function hashRequestContent(lastUserContent: string, toolCallNames?: string[]): string {
   const normalized = lastUserContent.replace(/\s+/g, " ").trim().slice(0, 500);
-  const toolSuffix = toolCallNames?.length
-    ? `|tools:${toolCallNames.sort().join(",")}`
-    : "";
+  const toolSuffix = toolCallNames?.length ? `|tools:${toolCallNames.sort().join(",")}` : "";
   return createHash("sha256")
     .update(normalized + toolSuffix)
     .digest("hex")

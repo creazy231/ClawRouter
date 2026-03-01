@@ -7,9 +7,11 @@ All notable changes to ClawRouter.
 ## v0.11.0 / v0.11.1 — Feb 28, 2026
 
 ### Three-Strike Escalation
+
 Session-level repetition detection: 3 consecutive identical request hashes auto-escalate to the next tier (SIMPLE → MEDIUM → COMPLEX → REASONING). Fixes Kimi K2.5 agentic loop problem without manual model switching.
 
 ### `/imagegen` command
+
 Generate images from chat. Calls BlockRun's image generation API with x402 micropayments.
 
 ```
@@ -18,13 +20,13 @@ Generate images from chat. Calls BlockRun's image generation API with x402 micro
 /imagegen --model banana-pro --size 2048x2048 landscape
 ```
 
-| Model | Shorthand | Price |
-|-------|-----------|-------|
-| Google Nano Banana (default) | `nano-banana` | $0.05/image |
-| Google Nano Banana Pro | `banana-pro` | $0.10/image (up to 4K) |
-| OpenAI DALL-E 3 | `dall-e-3` | $0.04/image |
-| OpenAI GPT Image 1 | `gpt-image` | $0.02/image |
-| Black Forest Flux 1.1 Pro | `flux` | $0.04/image |
+| Model                        | Shorthand     | Price                  |
+| ---------------------------- | ------------- | ---------------------- |
+| Google Nano Banana (default) | `nano-banana` | $0.05/image            |
+| Google Nano Banana Pro       | `banana-pro`  | $0.10/image (up to 4K) |
+| OpenAI DALL-E 3              | `dall-e-3`    | $0.04/image            |
+| OpenAI GPT Image 1           | `gpt-image`   | $0.02/image            |
+| Black Forest Flux 1.1 Pro    | `flux`        | $0.04/image            |
 
 ---
 

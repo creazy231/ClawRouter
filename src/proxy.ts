@@ -1057,7 +1057,7 @@ async function uploadDataUriToHost(dataUri: string): Promise<string> {
   const match = dataUri.match(/^data:(image\/\w+);base64,(.+)$/);
   if (!match) throw new Error("Invalid data URI format");
   const [, mimeType, b64Data] = match;
-  const ext = mimeType === "image/jpeg" ? "jpg" : mimeType.split("/")[1] ?? "png";
+  const ext = mimeType === "image/jpeg" ? "jpg" : (mimeType.split("/")[1] ?? "png");
 
   const buffer = Buffer.from(b64Data, "base64");
   const blob = new Blob([buffer], { type: mimeType });
@@ -1860,13 +1860,13 @@ async function proxyRequest(
           // Resolve shorthand aliases
           const IMAGE_MODEL_ALIASES: Record<string, string> = {
             "dall-e-3": "openai/dall-e-3",
-            "dalle3": "openai/dall-e-3",
-            "dalle": "openai/dall-e-3",
+            dalle3: "openai/dall-e-3",
+            dalle: "openai/dall-e-3",
             "gpt-image": "openai/gpt-image-1",
             "gpt-image-1": "openai/gpt-image-1",
-            "flux": "black-forest/flux-1.1-pro",
+            flux: "black-forest/flux-1.1-pro",
             "flux-pro": "black-forest/flux-1.1-pro",
-            "banana": "google/nano-banana",
+            banana: "google/nano-banana",
             "nano-banana": "google/nano-banana",
             "banana-pro": "google/nano-banana-pro",
             "nano-banana-pro": "google/nano-banana-pro",
@@ -1911,34 +1911,56 @@ async function proxyRequest(
               "Cache-Control": "no-cache",
               Connection: "keep-alive",
             });
-            res.write(`data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: { role: "assistant", content: errorText }, finish_reason: null }] })}\n\n`);
-            res.write(`data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`);
+            res.write(
+              `data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: { role: "assistant", content: errorText }, finish_reason: null }] })}\n\n`,
+            );
+            res.write(
+              `data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`,
+            );
             res.write("data: [DONE]\n\n");
             res.end();
           } else {
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({
-              id: completionId, object: "chat.completion", created: timestamp, model: "clawrouter/image",
-              choices: [{ index: 0, message: { role: "assistant", content: errorText }, finish_reason: "stop" }],
-              usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            }));
+            res.end(
+              JSON.stringify({
+                id: completionId,
+                object: "chat.completion",
+                created: timestamp,
+                model: "clawrouter/image",
+                choices: [
+                  {
+                    index: 0,
+                    message: { role: "assistant", content: errorText },
+                    finish_reason: "stop",
+                  },
+                ],
+                usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+              }),
+            );
           }
           console.log(`[ClawRouter] /imagegen command → showing usage help`);
           return;
         }
 
         // Call upstream image generation API
-        console.log(`[ClawRouter] /imagegen command → ${imageModel} (${imageSize}): ${imagePrompt.slice(0, 80)}...`);
+        console.log(
+          `[ClawRouter] /imagegen command → ${imageModel} (${imageSize}): ${imagePrompt.slice(0, 80)}...`,
+        );
         try {
           const imageUpstreamUrl = `${apiBase}/v1/images/generations`;
-          const imageBody = JSON.stringify({ model: imageModel, prompt: imagePrompt, size: imageSize, n: 1 });
+          const imageBody = JSON.stringify({
+            model: imageModel,
+            prompt: imagePrompt,
+            size: imageSize,
+            n: 1,
+          });
           const imageResponse = await payFetch(imageUpstreamUrl, {
             method: "POST",
             headers: { "content-type": "application/json", "user-agent": USER_AGENT },
             body: imageBody,
           });
 
-          const imageResult = await imageResponse.json() as {
+          const imageResult = (await imageResponse.json()) as {
             created?: number;
             data?: Array<{ url?: string; revised_prompt?: string }>;
             error?: string | { message?: string };
@@ -1946,9 +1968,11 @@ async function proxyRequest(
 
           let responseText: string;
           if (!imageResponse.ok || imageResult.error) {
-            const errMsg = typeof imageResult.error === "string"
-              ? imageResult.error
-              : (imageResult.error as { message?: string })?.message ?? `HTTP ${imageResponse.status}`;
+            const errMsg =
+              typeof imageResult.error === "string"
+                ? imageResult.error
+                : ((imageResult.error as { message?: string })?.message ??
+                  `HTTP ${imageResponse.status}`);
             responseText = `Image generation failed: ${errMsg}`;
             console.log(`[ClawRouter] /imagegen error: ${errMsg}`);
           } else {
@@ -1964,8 +1988,12 @@ async function proxyRequest(
                       const hostedUrl = await uploadDataUriToHost(img.url);
                       lines.push(hostedUrl);
                     } catch (uploadErr) {
-                      console.error(`[ClawRouter] /imagegen: failed to upload data URI: ${uploadErr instanceof Error ? uploadErr.message : String(uploadErr)}`);
-                      lines.push("Image generated but upload failed. Try again or use --model dall-e-3.");
+                      console.error(
+                        `[ClawRouter] /imagegen: failed to upload data URI: ${uploadErr instanceof Error ? uploadErr.message : String(uploadErr)}`,
+                      );
+                      lines.push(
+                        "Image generated but upload failed. Try again or use --model dall-e-3.",
+                      );
                     }
                   } else {
                     lines.push(img.url);
@@ -1988,26 +2016,43 @@ async function proxyRequest(
               "Cache-Control": "no-cache",
               Connection: "keep-alive",
             });
-            res.write(`data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: { role: "assistant", content: responseText }, finish_reason: null }] })}\n\n`);
-            res.write(`data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`);
+            res.write(
+              `data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: { role: "assistant", content: responseText }, finish_reason: null }] })}\n\n`,
+            );
+            res.write(
+              `data: ${JSON.stringify({ id: completionId, object: "chat.completion.chunk", created: timestamp, model: "clawrouter/image", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`,
+            );
             res.write("data: [DONE]\n\n");
             res.end();
           } else {
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({
-              id: completionId, object: "chat.completion", created: timestamp, model: "clawrouter/image",
-              choices: [{ index: 0, message: { role: "assistant", content: responseText }, finish_reason: "stop" }],
-              usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            }));
+            res.end(
+              JSON.stringify({
+                id: completionId,
+                object: "chat.completion",
+                created: timestamp,
+                model: "clawrouter/image",
+                choices: [
+                  {
+                    index: 0,
+                    message: { role: "assistant", content: responseText },
+                    finish_reason: "stop",
+                  },
+                ],
+                usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+              }),
+            );
           }
         } catch (err) {
           const errMsg = err instanceof Error ? err.message : String(err);
           console.error(`[ClawRouter] /imagegen error: ${errMsg}`);
           if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({
-              error: { message: `Image generation failed: ${errMsg}`, type: "image_error" },
-            }));
+            res.end(
+              JSON.stringify({
+                error: { message: `Image generation failed: ${errMsg}`, type: "image_error" },
+              }),
+            );
           }
         }
         return;
@@ -2180,10 +2225,7 @@ async function proxyRequest(
                   .filter(Boolean)
               : undefined;
             const contentHash = hashRequestContent(prompt, toolCallNames);
-            const shouldEscalate = sessionStore.recordRequestHash(
-              effectiveSessionId!,
-              contentHash,
-            );
+            const shouldEscalate = sessionStore.recordRequestHash(effectiveSessionId!, contentHash);
 
             if (shouldEscalate) {
               const activeTierConfigs = (() => {

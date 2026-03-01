@@ -7,10 +7,7 @@ import type { AggregatedStats } from "./stats.js";
 
 export type ReportPeriod = "daily" | "weekly" | "monthly";
 
-export async function generateReport(
-  period: ReportPeriod,
-  json: boolean = false,
-): Promise<string> {
+export async function generateReport(period: ReportPeriod, json: boolean = false): Promise<string> {
   const days = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
   const stats = await getStats(days);
 
@@ -21,11 +18,7 @@ export async function generateReport(
   return formatMarkdownReport(period, days, stats);
 }
 
-function formatMarkdownReport(
-  period: ReportPeriod,
-  days: number,
-  stats: AggregatedStats,
-): string {
+function formatMarkdownReport(period: ReportPeriod, days: number, stats: AggregatedStats): string {
   const lines: string[] = [];
 
   lines.push(`# ClawRouter ${capitalize(period)} Report`);
