@@ -255,13 +255,14 @@ try {
     console.log('  Added minimax model to blockrun provider catalog');
   }
 
-  // Only add minimax alias if user already has an allowlist (don't create one from scratch)
-  if (config.agents?.defaults?.models && typeof config.agents.defaults.models === 'object' && Object.keys(config.agents.defaults.models).length > 0) {
-    const allowlist = config.agents.defaults.models;
-    if (!allowlist['blockrun/minimax'] || allowlist['blockrun/minimax'].alias !== 'minimax') {
-      allowlist['blockrun/minimax'] = { alias: 'minimax' };
+  // Clean up broken allowlist: if it only has blockrun/ entries, delete it entirely
+  // (previous versions accidentally created an allowlist that hid all non-blockrun models)
+  if (config.agents?.defaults?.models && typeof config.agents.defaults.models === 'object') {
+    const keys = Object.keys(config.agents.defaults.models);
+    if (keys.length > 0 && keys.every(k => k.startsWith('blockrun/'))) {
+      delete config.agents.defaults.models;
       changed = true;
-      console.log('  Added minimax to existing model allowlist');
+      console.log('  Removed blockrun-only allowlist (was hiding other models)');
     }
   }
 
