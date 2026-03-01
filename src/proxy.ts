@@ -1049,6 +1049,39 @@ async function proxyPartnerRequest(
 }
 
 /**
+ * Upload a base64 data URI to telegra.ph and return a public URL.
+ * Used for image generation responses from models that return data URIs
+ * (e.g. Google/nano-banana) instead of hosted URLs.
+ */
+async function uploadDataUriToHost(dataUri: string): Promise<string> {
+  // Parse data URI: data:image/png;base64,iVBORw0KGgo...
+  const match = dataUri.match(/^data:(image\/\w+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid data URI format");
+  const [, mimeType, b64Data] = match;
+  const ext = mimeType === "image/jpeg" ? "jpg" : mimeType.split("/")[1] ?? "png";
+
+  const buffer = Buffer.from(b64Data, "base64");
+  const blob = new Blob([buffer], { type: mimeType });
+
+  const form = new FormData();
+  form.append("file", blob, `image.${ext}`);
+
+  const resp = await fetch("https://telegra.ph/upload", {
+    method: "POST",
+    body: form,
+  });
+
+  if (!resp.ok) throw new Error(`telegra.ph upload failed: HTTP ${resp.status}`);
+
+  const result = (await resp.json()) as Array<{ src?: string }> | { error?: string };
+  if (Array.isArray(result) && result[0]?.src) {
+    return `https://telegra.ph${result[0].src}`;
+  }
+  const errMsg = !Array.isArray(result) && result.error ? result.error : "unknown error";
+  throw new Error(`telegra.ph upload failed: ${errMsg}`);
+}
+
+/**
  * Start the local x402 proxy server.
  *
  * If a proxy is already running on the target port, reuses it instead of failing.
@@ -1927,7 +1960,21 @@ async function proxyRequest(
             } else {
               const lines: string[] = [];
               for (const img of images) {
-                if (img.url) lines.push(img.url);
+                if (img.url) {
+                  // Data URIs (from Google models) must be uploaded to get a public URL
+                  // Telegram and other clients can't render raw base64 data URIs
+                  if (img.url.startsWith("data:")) {
+                    try {
+                      const hostedUrl = await uploadDataUriToHost(img.url);
+                      lines.push(hostedUrl);
+                    } catch (uploadErr) {
+                      console.error(`[ClawRouter] /imagegen: failed to upload data URI: ${uploadErr instanceof Error ? uploadErr.message : String(uploadErr)}`);
+                      lines.push("Image generated but upload failed. Try again or use --model dall-e-3.");
+                    }
+                  } else {
+                    lines.push(img.url);
+                  }
+                }
                 if (img.revised_prompt) lines.push(`Revised prompt: ${img.revised_prompt}`);
               }
               lines.push("", `Model: ${imageModel} | Size: ${imageSize}`);
