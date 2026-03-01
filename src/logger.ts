@@ -20,6 +20,8 @@ export type UsageEntry = {
   baselineCost: number;
   savings: number; // 0-1 percentage
   latencyMs: number;
+  /** Input (prompt) tokens reported by the provider */
+  inputTokens?: number;
   /** Partner service ID (e.g., "x_users_lookup") — only set for partner API calls */
   partnerId?: string;
   /** Partner service name (e.g., "AttentionVC") — only set for partner API calls */

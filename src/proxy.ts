@@ -1662,6 +1662,7 @@ async function proxyRequest(
   let maxTokens = 4096;
   let routingProfile: "free" | "eco" | "auto" | "premium" | null = null;
   let accumulatedContent = ""; // For session journal event extraction
+  let responseInputTokens: number | undefined;
   const isChatCompletion = req.url?.includes("/chat/completions");
 
   // Extract session ID early for journal operations (header-only at this point)
@@ -2816,6 +2817,12 @@ async function proxyRequest(
             usage?: unknown;
           };
 
+          // Extract input token count from upstream response
+          if (rsp.usage && typeof rsp.usage === "object") {
+            const u = rsp.usage as Record<string, unknown>;
+            if (typeof u.prompt_tokens === "number") responseInputTokens = u.prompt_tokens;
+          }
+
           // Build base chunk structure (reused for all chunks)
           // Match OpenAI's exact format including system_fingerprint
           const baseChunk = {
@@ -2987,13 +2994,18 @@ async function proxyRequest(
         );
       }
 
-      // Extract content from non-streaming response for session journal
+      // Extract content and token usage from non-streaming response
       try {
         const rspJson = JSON.parse(responseBody.toString()) as {
           choices?: Array<{ message?: { content?: string } }>;
+          usage?: Record<string, unknown>;
         };
         if (rspJson.choices?.[0]?.message?.content) {
           accumulatedContent = rspJson.choices[0].message.content;
+        }
+        if (rspJson.usage && typeof rspJson.usage === "object") {
+          if (typeof rspJson.usage.prompt_tokens === "number")
+            responseInputTokens = rspJson.usage.prompt_tokens;
         }
       } catch {
         // Ignore parse errors - journal just won't have content for this response
@@ -3068,6 +3080,7 @@ async function proxyRequest(
       baselineCost: baselineWithBuffer,
       savings: accurateCosts.savings,
       latencyMs: Date.now() - startTime,
+      ...(responseInputTokens !== undefined && { inputTokens: responseInputTokens }),
     };
     logUsage(entry).catch(() => {});
   }
