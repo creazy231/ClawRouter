@@ -259,6 +259,18 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
   // would prevent users from seeing/selecting models from other providers (e.g. OpenRouter).
   // BlockRun models are already discoverable via providers.blockrun.models registration.
 
+  // MIGRATION: Remove broken allowlist created by old reinstall.sh (pre-0.11.6).
+  // Old versions created agents.defaults.models with only blockrun/ entries, which hid
+  // all other models from the /model picker.
+  if (defaults.models && typeof defaults.models === "object" && !Array.isArray(defaults.models)) {
+    const allowlistKeys = Object.keys(defaults.models as Record<string, unknown>);
+    if (allowlistKeys.length > 0 && allowlistKeys.every((k) => k.startsWith("blockrun/"))) {
+      delete defaults.models;
+      needsWrite = true;
+      logger.info("Removed blockrun-only allowlist (was hiding other models)");
+    }
+  }
+
   // Write config file if any changes were made
   // Use atomic write (temp file + rename) to prevent partial writes that could
   // corrupt the config and cause other plugins to lose their settings on next load.
