@@ -253,22 +253,26 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
     needsWrite = true;
   }
 
-  // NOTE: We intentionally do NOT inject entries into agents.defaults.models (the allowlist).
-  // The allowlist controls which models appear in the /model picker. When non-empty, it acts
-  // as a filter that hides all models not in the list. Populating it with blockrun-only entries
-  // would prevent users from seeing/selecting models from other providers (e.g. OpenRouter).
-  // BlockRun models are already discoverable via providers.blockrun.models registration.
-
-  // MIGRATION: Remove broken allowlist created by old reinstall.sh (pre-0.11.6).
-  // Old versions created agents.defaults.models with only blockrun/ entries, which hid
-  // all other models from the /model picker.
-  if (defaults.models && typeof defaults.models === "object" && !Array.isArray(defaults.models)) {
-    const allowlistKeys = Object.keys(defaults.models as Record<string, unknown>);
-    if (allowlistKeys.length > 0 && allowlistKeys.every((k) => k.startsWith("blockrun/"))) {
-      delete defaults.models;
-      needsWrite = true;
-      logger.info("Removed blockrun-only allowlist (was hiding other models)");
+  // Populate agents.defaults.models (the allowlist) with ALL BlockRun models.
+  // OpenClaw uses this as a whitelist — only listed models appear in the /model picker.
+  // We ensure every BlockRun model is present so users can select any of them.
+  // Existing non-blockrun entries are preserved (e.g. from other providers like OpenRouter).
+  if (!defaults.models || typeof defaults.models !== "object" || Array.isArray(defaults.models)) {
+    defaults.models = {};
+    needsWrite = true;
+  }
+  const allowlist = defaults.models as Record<string, unknown>;
+  let addedCount = 0;
+  for (const m of OPENCLAW_MODELS) {
+    const key = `blockrun/${m.id}`;
+    if (!allowlist[key]) {
+      allowlist[key] = {};
+      addedCount++;
     }
+  }
+  if (addedCount > 0) {
+    needsWrite = true;
+    logger.info(`Added ${addedCount} models to allowlist (${OPENCLAW_MODELS.length} total)`);
   }
 
   // Write config file if any changes were made

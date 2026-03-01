@@ -203,8 +203,8 @@ if [ ! -f "$DIST_PATH" ]; then
 fi
 echo "  ✓ dist/index.js verified"
 
-# 6.2. Refresh blockrun model catalog from installed package
-echo "→ Refreshing BlockRun models catalog..."
+# 6.2. Populate model allowlist so all BlockRun models appear in /model picker
+echo "→ Populating model allowlist..."
 node -e "
 const os = require('os');
 const fs = require('fs');
@@ -220,59 +220,60 @@ try {
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   let changed = false;
 
-  // Ensure provider exists
+  // Ensure provider exists with apiKey
   if (!config.models) config.models = {};
   if (!config.models.providers) config.models.providers = {};
   if (!config.models.providers.blockrun) {
     config.models.providers.blockrun = { api: 'openai-completions', models: [] };
     changed = true;
   }
-
-  const blockrun = config.models.providers.blockrun;
-  if (!blockrun.apiKey) {
-    blockrun.apiKey = 'x402-proxy-handles-auth';
-    changed = true;
-  }
-  if (!Array.isArray(blockrun.models)) {
-    blockrun.models = [];
+  if (!config.models.providers.blockrun.apiKey) {
+    config.models.providers.blockrun.apiKey = 'x402-proxy-handles-auth';
     changed = true;
   }
 
-  // Ensure minimax model exists in provider catalog
-  const hasMiniMaxModel = blockrun.models.some(m => m && m.id === 'minimax/minimax-m2.5');
-  if (!hasMiniMaxModel) {
-    blockrun.models.push({
-      id: 'minimax/minimax-m2.5',
-      name: 'MiniMax M2.5',
-      api: 'openai-completions',
-      reasoning: true,
-      input: ['text'],
-      cost: { input: 0.3, output: 1.2, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 204800,
-      maxTokens: 16384
+  // Populate allowlist with all BlockRun models
+  // OpenClaw uses agents.defaults.models as a whitelist for the /model picker.
+  // index.ts will also do this on gateway start, but we pre-populate here so
+  // users see models immediately after install.
+  if (!config.agents) config.agents = {};
+  if (!config.agents.defaults) config.agents.defaults = {};
+  if (!config.agents.defaults.models || typeof config.agents.defaults.models !== 'object') {
+    config.agents.defaults.models = {};
+    changed = true;
+  }
+
+  // Load model IDs from installed package
+  const distPath = path.join(os.homedir(), '.openclaw', 'extensions', 'clawrouter', 'dist', 'index.js');
+  if (fs.existsSync(distPath)) {
+    import('file://' + distPath).then(({ OPENCLAW_MODELS }) => {
+      const allowlist = config.agents.defaults.models;
+      let added = 0;
+      for (const m of OPENCLAW_MODELS) {
+        const key = 'blockrun/' + m.id;
+        if (!allowlist[key]) {
+          allowlist[key] = {};
+          added++;
+        }
+      }
+      if (added > 0) {
+        changed = true;
+        console.log('  Added ' + added + ' models to allowlist (' + OPENCLAW_MODELS.length + ' total)');
+      } else {
+        console.log('  Allowlist already up to date');
+      }
+      if (changed) {
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      }
+    }).catch(err => {
+      console.log('  Could not load models from package:', err.message);
+      console.log('  Allowlist will be populated on gateway start');
     });
-    changed = true;
-    console.log('  Added minimax model to blockrun provider catalog');
-  }
-
-  // Clean up broken allowlist: if it only has blockrun/ entries, delete it entirely
-  // (previous versions accidentally created an allowlist that hid all non-blockrun models)
-  if (config.agents?.defaults?.models && typeof config.agents.defaults.models === 'object') {
-    const keys = Object.keys(config.agents.defaults.models);
-    if (keys.length > 0 && keys.every(k => k.startsWith('blockrun/'))) {
-      delete config.agents.defaults.models;
-      changed = true;
-      console.log('  Removed blockrun-only allowlist (was hiding other models)');
-    }
-  }
-
-  if (changed) {
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
   } else {
-    console.log('  blockrun minimax config already up to date');
+    console.log('  dist/index.js not found, allowlist will be populated on gateway start');
   }
 } catch (err) {
-  console.log('  Could not update minimax config:', err.message);
+  console.log('  Could not update config:', err.message);
 }
 "
 
