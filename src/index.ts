@@ -253,18 +253,44 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
     needsWrite = true;
   }
 
-  // Populate agents.defaults.models (the allowlist) with ALL BlockRun models.
+  // Populate agents.defaults.models (the allowlist) with top BlockRun models.
   // OpenClaw uses this as a whitelist — only listed models appear in the /model picker.
-  // We ensure every BlockRun model is present so users can select any of them.
-  // Existing non-blockrun entries are preserved (e.g. from other providers like OpenRouter).
+  // We show the 16 most popular models to keep the picker clean.
+  // Existing non-blockrun entries are preserved (e.g. from other providers).
+  const TOP_MODELS = [
+    "auto",
+    "free",
+    "eco",
+    "premium",
+    "anthropic/claude-sonnet-4.6",
+    "anthropic/claude-opus-4.6",
+    "anthropic/claude-haiku-4.5",
+    "openai/gpt-5.2",
+    "openai/gpt-4o",
+    "openai/o3",
+    "google/gemini-2.5-pro",
+    "google/gemini-2.5-flash",
+    "deepseek/deepseek-chat",
+    "moonshot/kimi-k2.5",
+    "xai/grok-3",
+    "minimax/minimax-m2.5",
+  ];
   if (!defaults.models || typeof defaults.models !== "object" || Array.isArray(defaults.models)) {
     defaults.models = {};
     needsWrite = true;
   }
   const allowlist = defaults.models as Record<string, unknown>;
+  // Clean out old blockrun entries that aren't in TOP_MODELS (from previous versions)
+  const topSet = new Set(TOP_MODELS.map((id) => `blockrun/${id}`));
+  for (const key of Object.keys(allowlist)) {
+    if (key.startsWith("blockrun/") && !topSet.has(key)) {
+      delete allowlist[key];
+      needsWrite = true;
+    }
+  }
   let addedCount = 0;
-  for (const m of OPENCLAW_MODELS) {
-    const key = `blockrun/${m.id}`;
+  for (const id of TOP_MODELS) {
+    const key = `blockrun/${id}`;
     if (!allowlist[key]) {
       allowlist[key] = {};
       addedCount++;
@@ -272,7 +298,7 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
   }
   if (addedCount > 0) {
     needsWrite = true;
-    logger.info(`Added ${addedCount} models to allowlist (${OPENCLAW_MODELS.length} total)`);
+    logger.info(`Added ${addedCount} models to allowlist (${TOP_MODELS.length} total)`);
   }
 
   // Write config file if any changes were made

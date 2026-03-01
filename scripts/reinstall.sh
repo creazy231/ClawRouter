@@ -203,7 +203,7 @@ if [ ! -f "$DIST_PATH" ]; then
 fi
 echo "  ✓ dist/index.js verified"
 
-# 6.2. Populate model allowlist so all BlockRun models appear in /model picker
+# 6.2. Populate model allowlist so top BlockRun models appear in /model picker
 echo "→ Populating model allowlist..."
 node -e "
 const os = require('os');
@@ -232,10 +232,16 @@ try {
     changed = true;
   }
 
-  // Populate allowlist with all BlockRun models
-  // OpenClaw uses agents.defaults.models as a whitelist for the /model picker.
-  // index.ts will also do this on gateway start, but we pre-populate here so
-  // users see models immediately after install.
+  // Top 16 models for the /model picker
+  const TOP_MODELS = [
+    'auto', 'free', 'eco', 'premium',
+    'anthropic/claude-sonnet-4.6', 'anthropic/claude-opus-4.6', 'anthropic/claude-haiku-4.5',
+    'openai/gpt-5.2', 'openai/gpt-4o', 'openai/o3',
+    'google/gemini-2.5-pro', 'google/gemini-2.5-flash',
+    'deepseek/deepseek-chat', 'moonshot/kimi-k2.5',
+    'xai/grok-3', 'minimax/minimax-m2.5'
+  ];
+
   if (!config.agents) config.agents = {};
   if (!config.agents.defaults) config.agents.defaults = {};
   if (!config.agents.defaults.models || typeof config.agents.defaults.models !== 'object') {
@@ -243,34 +249,31 @@ try {
     changed = true;
   }
 
-  // Load model IDs from installed package
-  const distPath = path.join(os.homedir(), '.openclaw', 'extensions', 'clawrouter', 'dist', 'index.js');
-  if (fs.existsSync(distPath)) {
-    import('file://' + distPath).then(({ OPENCLAW_MODELS }) => {
-      const allowlist = config.agents.defaults.models;
-      let added = 0;
-      for (const m of OPENCLAW_MODELS) {
-        const key = 'blockrun/' + m.id;
-        if (!allowlist[key]) {
-          allowlist[key] = {};
-          added++;
-        }
-      }
-      if (added > 0) {
-        changed = true;
-        console.log('  Added ' + added + ' models to allowlist (' + OPENCLAW_MODELS.length + ' total)');
-      } else {
-        console.log('  Allowlist already up to date');
-      }
-      if (changed) {
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-      }
-    }).catch(err => {
-      console.log('  Could not load models from package:', err.message);
-      console.log('  Allowlist will be populated on gateway start');
-    });
+  const allowlist = config.agents.defaults.models;
+  // Clean out old blockrun entries not in TOP_MODELS
+  const topSet = new Set(TOP_MODELS.map(id => 'blockrun/' + id));
+  for (const key of Object.keys(allowlist)) {
+    if (key.startsWith('blockrun/') && !topSet.has(key)) {
+      delete allowlist[key];
+      changed = true;
+    }
+  }
+  let added = 0;
+  for (const id of TOP_MODELS) {
+    const key = 'blockrun/' + id;
+    if (!allowlist[key]) {
+      allowlist[key] = {};
+      added++;
+    }
+  }
+  if (added > 0) {
+    changed = true;
+    console.log('  Added ' + added + ' models to allowlist (' + TOP_MODELS.length + ' total)');
   } else {
-    console.log('  dist/index.js not found, allowlist will be populated on gateway start');
+    console.log('  Allowlist already up to date');
+  }
+  if (changed) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
   }
 } catch (err) {
   console.log('  Could not update config:', err.message);
