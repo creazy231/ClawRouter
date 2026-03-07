@@ -2842,19 +2842,26 @@ async function proxyRequest(
             const parsed = JSON.parse(result.errorBody || "{}");
             if (parsed.update_available) {
               console.log("");
-              console.log(`\x1b[33m⬆️  ClawRouter ${parsed.update_available} available (you have ${VERSION})\x1b[0m`);
-              console.log(`   Run: \x1b[36mcurl -fsSL ${parsed.update_url || "https://blockrun.ai/ClawRouter-update"} | bash\x1b[0m`);
+              console.log(
+                `\x1b[33m⬆️  ClawRouter ${parsed.update_available} available (you have ${VERSION})\x1b[0m`,
+              );
+              console.log(
+                `   Run: \x1b[36mcurl -fsSL ${parsed.update_url || "https://blockrun.ai/ClawRouter-update"} | bash\x1b[0m`,
+              );
               console.log("");
             }
-          } catch { /* ignore parse errors */ }
+          } catch {
+            /* ignore parse errors */
+          }
         }
 
         // Payment error (insufficient funds, simulation failure) — skip remaining
         // paid models, jump straight to free model. No point trying other paid
         // models with the same wallet state.
-        const isPaymentErr = /payment.*verification.*failed|payment.*settlement.*failed|insufficient.*funds|transaction_simulation_failed/i.test(
-          result.errorBody || "",
-        );
+        const isPaymentErr =
+          /payment.*verification.*failed|payment.*settlement.*failed|insufficient.*funds|transaction_simulation_failed/i.test(
+            result.errorBody || "",
+          );
         if (isPaymentErr && tryModel !== FREE_MODEL) {
           const freeIdx = modelsToTry.indexOf(FREE_MODEL);
           if (freeIdx > i + 1) {

@@ -33,8 +33,16 @@ interface ScanSummary {
 
 type ScanFn = (dir: string) => Promise<ScanSummary>;
 
-/** Resolve openclaw dist dir — try global npm root first, fall back to Docker path. */
+/** Resolve openclaw dist dir — prefer local dependency, then fall back for Docker/global runs. */
 function resolveOpenclawDist(): string {
+  const local = resolve(__dirname, "../../node_modules/openclaw/dist");
+  try {
+    readdirSync(local);
+    return local;
+  } catch {
+    // fall through to global/Docker lookup
+  }
+
   try {
     const globalRoot = execSync("npm root -g", { encoding: "utf-8" }).trim();
     return `${globalRoot}/openclaw/dist/`;
@@ -57,6 +65,7 @@ function resolveClawrouterDist(): string {
 describe("OpenClaw security scanner", () => {
   let scanDirectoryWithSummary: ScanFn | undefined;
   let distDir: string;
+  let scannerLoadError: string | undefined;
 
   beforeAll(async () => {
     distDir = resolveClawrouterDist();
@@ -67,29 +76,26 @@ describe("OpenClaw security scanner", () => {
       const files = readdirSync(openclawDist);
       const scannerFile = files.find((f) => f.startsWith("skill-scanner"));
       if (!scannerFile) {
-        console.warn("[scanner] skill-scanner chunk not found in openclaw dist — skipping");
+        scannerLoadError = `skill-scanner chunk not found in ${openclawDist}`;
         return;
       }
-      const mod = (await import(pathToFileURL(`${openclawDist}${scannerFile}`).href)) as Record<
-        string,
-        unknown
-      >;
+      const scannerPath = resolve(openclawDist, scannerFile);
+      const mod = (await import(pathToFileURL(scannerPath).href)) as Record<string, unknown>;
       // The scanner exports scanDirectoryWithSummary as a minified name
       const fn = Object.values(mod).find((v) => typeof v === "function") as ScanFn | undefined;
       if (fn) {
         scanDirectoryWithSummary = fn;
       } else {
-        console.warn("[scanner] No function export found in skill-scanner module — skipping");
+        scannerLoadError = `No function export found in ${scannerFile}`;
       }
     } catch (err) {
-      console.warn(`[scanner] Could not load openclaw scanner: ${err}`);
+      scannerLoadError = `Could not load openclaw scanner: ${String(err)}`;
     }
   });
 
   it("dist/ has zero critical findings (no env-harvesting)", async () => {
     if (!scanDirectoryWithSummary) {
-      console.log("[scanner] Scanner not available — test passes vacuously");
-      return;
+      throw new Error(`[scanner] Scanner not available: ${scannerLoadError ?? "unknown error"}`);
     }
 
     const result = await scanDirectoryWithSummary(distDir);
@@ -117,8 +123,7 @@ describe("OpenClaw security scanner", () => {
 
   it("dist/ has no unexpected warn-level findings", async () => {
     if (!scanDirectoryWithSummary) {
-      console.log("[scanner] Scanner not available — test passes vacuously");
-      return;
+      throw new Error(`[scanner] Scanner not available: ${scannerLoadError ?? "unknown error"}`);
     }
 
     const result = await scanDirectoryWithSummary(distDir);

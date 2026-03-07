@@ -9,7 +9,9 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 
 /** Mirrors the parsing logic in proxy.ts's 429 handler */
-function parseUpdateHint(errorBody: string | undefined): { update_available: string; update_url?: string } | null {
+function parseUpdateHint(
+  errorBody: string | undefined,
+): { update_available: string; update_url?: string } | null {
   try {
     const parsed = JSON.parse(errorBody || "{}");
     if (parsed.update_available) {
@@ -32,8 +34,15 @@ function getUpdateHint(
   const clientVersion = match[1];
   const [cMaj, cMin, cPatch] = clientVersion.split(".").map(Number);
   const [sMaj, sMin, sPatch] = currentVersion.split(".").map(Number);
-  if (cMaj < sMaj || (cMaj === sMaj && cMin < sMin) || (cMaj === sMaj && cMin === sMin && cPatch < sPatch)) {
-    return { update_available: currentVersion, update_url: "https://blockrun.ai/ClawRouter-update" };
+  if (
+    cMaj < sMaj ||
+    (cMaj === sMaj && cMin < sMin) ||
+    (cMaj === sMaj && cMin === sMin && cPatch < sPatch)
+  ) {
+    return {
+      update_available: currentVersion,
+      update_url: "https://blockrun.ai/ClawRouter-update",
+    };
   }
   return null;
 }
@@ -135,11 +144,17 @@ describe("update hint — console output", () => {
       const parsed = JSON.parse(errorBody || "{}");
       if (parsed.update_available) {
         console.log("");
-        console.log(`\x1b[33m⬆️  ClawRouter ${parsed.update_available} available (you have ${VERSION})\x1b[0m`);
-        console.log(`   Run: \x1b[36mcurl -fsSL ${parsed.update_url || "https://blockrun.ai/ClawRouter-update"} | bash\x1b[0m`);
+        console.log(
+          `\x1b[33m⬆️  ClawRouter ${parsed.update_available} available (you have ${VERSION})\x1b[0m`,
+        );
+        console.log(
+          `   Run: \x1b[36mcurl -fsSL ${parsed.update_url || "https://blockrun.ai/ClawRouter-update"} | bash\x1b[0m`,
+        );
         console.log("");
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Should have logged 4 calls (empty, version, run command, empty)
     expect(logSpy).toHaveBeenCalledTimes(4);
@@ -162,7 +177,9 @@ describe("update hint — console output", () => {
       if (parsed.update_available) {
         console.log("should not reach here");
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     expect(logSpy).not.toHaveBeenCalled();
   });
