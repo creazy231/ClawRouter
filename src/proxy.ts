@@ -2908,6 +2908,23 @@ async function proxyRequest(
             hasTools,
           });
 
+          // SIMPLE queries with tools: don't force agentic tier for trivial date/time/lookup requests.
+          // If the content classifies as SIMPLE but tools are present, re-route without tools flag
+          // so the query stays on a cheap model instead of jumping to the agentic tier config.
+          if (hasTools && routingDecision.tier === "SIMPLE") {
+            const simpleRoutingDecision = route(prompt, systemPrompt, maxTokens, {
+              ...routerOpts,
+              routingProfile: routingProfile ?? undefined,
+              hasTools: false,
+            });
+            if (simpleRoutingDecision.tier === "SIMPLE") {
+              console.log(
+                `[ClawRouter] SIMPLE+tools: using non-agentic model ${simpleRoutingDecision.model} (tools present but query is trivial)`,
+              );
+              routingDecision = simpleRoutingDecision;
+            }
+          }
+
           if (existingSession) {
             // Never downgrade: only upgrade the session when the current request needs a higher
             // tier. This fixes the OpenClaw startup-message bias (the startup message always
@@ -2937,6 +2954,18 @@ async function proxyRequest(
                   routingDecision.tier,
                 );
               }
+            } else if (routingDecision.tier === "SIMPLE") {
+              // SIMPLE follow-up in an active session: let it use cheap routing.
+              // e.g. "你好" or "thanks" after a complex task should not inherit the
+              // expensive session model or recount all context tokens on a paid model.
+              console.log(
+                `[ClawRouter] Session ${effectiveSessionId?.slice(0, 8)}... SIMPLE follow-up, using cheap model: ${routingDecision.model} (bypassing pinned ${existingSession.tier})`,
+              );
+              parsed.model = routingDecision.model;
+              modelId = routingDecision.model;
+              bodyModified = true;
+              sessionStore.touchSession(effectiveSessionId!);
+              // routingDecision already reflects cheap model — no override needed
             } else {
               // Keep existing higher-tier model (prevent downgrade mid-task)
               console.log(
