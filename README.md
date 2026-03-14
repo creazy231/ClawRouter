@@ -2,17 +2,19 @@
 
 <img src="assets/banner.png" alt="ClawRouter Banner" width="600">
 
-<h3>The agent-native LLM router for <a href="https://openclaw.ai">OpenClaw</a></h3>
+<h1>The LLM router built for autonomous agents</h1>
 
-Route every request to the right model at the right price.<br>
-15-dimension scoring, <1ms local routing, optimized for autonomous agents.<br>
-One wallet, 41+ models, zero API keys.
+<p>Agents can't sign up for accounts. Agents can't enter credit cards.<br>
+Agents can only sign transactions.<br><br>
+<strong>ClawRouter is the only LLM router that lets agents operate independently.</strong></p>
 
-<img src="https://img.shields.io/badge/🚀_92%25_Cost_Savings-success?style=for-the-badge" alt="92% savings">&nbsp;
+<br>
+
+<img src="https://img.shields.io/badge/🤖_Agent--Native-black?style=for-the-badge" alt="Agent native">&nbsp;
 <img src="https://img.shields.io/badge/🔑_Zero_API_Keys-blue?style=for-the-badge" alt="No API keys">&nbsp;
-<img src="https://img.shields.io/badge/🤖_41+_Models-purple?style=for-the-badge" alt="41+ models">&nbsp;
-<img src="https://img.shields.io/badge/💰_Non--Custodial-orange?style=for-the-badge" alt="Non-custodial">&nbsp;
-<img src="https://img.shields.io/badge/⚡_<1ms_Routing-yellow?style=for-the-badge" alt="Fast routing">
+<img src="https://img.shields.io/badge/⚡_Local_Routing-yellow?style=for-the-badge" alt="Local routing">&nbsp;
+<img src="https://img.shields.io/badge/💰_x402_USDC-purple?style=for-the-badge" alt="x402 USDC">&nbsp;
+<img src="https://img.shields.io/badge/🔓_Open_Source-green?style=for-the-badge" alt="Open source">
 
 [![npm version](https://img.shields.io/npm/v/@blockrun/clawrouter.svg?style=flat-square&color=cb3837)](https://npmjs.com/package/@blockrun/clawrouter)
 [![npm downloads](https://img.shields.io/npm/dm/@blockrun/clawrouter.svg?style=flat-square&color=blue)](https://npmjs.com/package/@blockrun/clawrouter)
@@ -32,27 +34,43 @@ One wallet, 41+ models, zero API keys.
 
 ---
 
-## 📑 Quick Navigation
+## Why ClawRouter exists
 
-| Section                                   | Description                     |
-| ----------------------------------------- | ------------------------------- |
-| [Quick Start](#-quick-start)              | Install in 2 minutes            |
-| [Routing Profiles](#-routing-profiles)    | eco / auto / premium / free     |
-| [Image Generation](#-image-generation)    | /imagegen with 5 models         |
-| [How It Works](#-how-it-works)            | 15-dimension local routing      |
-| [Models & Pricing](#-models--pricing)     | 41+ models, full price list     |
-| [Screenshots](#-screenshots)              | See it in action                |
-| [Payment](#-payment)                      | x402 non-custodial USDC         |
-| [Configuration](#%EF%B8%8F-configuration) | Environment variables           |
-| [Troubleshooting](#-troubleshooting)      | `doctor` AI-powered diagnostics |
-| [vs OpenRouter](#-vs-openrouter)          | Why ClawRouter wins             |
-| [Support](#-support)                      | Telegram, X, founders           |
+Every other LLM router was built for **human developers** — create an account, get an API key, pick a model from a dashboard, pay with a credit card.
 
-**API Docs:** [Image Generation & Editing](docs/image-generation.md) · [Architecture](docs/architecture.md) · [Configuration](docs/configuration.md)
+**Agents can't do any of that.**
+
+ClawRouter is built for the agent-first world:
+
+- **No accounts** — a wallet is generated locally, no signup
+- **No API keys** — your wallet signature IS authentication
+- **No model selection** — 15-dimension scoring picks the right model automatically
+- **No credit cards** — agents pay per-request with USDC via [x402](https://x402.org)
+- **No trust required** — runs locally, <1ms routing, zero external dependencies
+
+This is the stack that lets agents operate autonomously: **x402 + USDC + local routing**.
 
 ---
 
-## 🚀 Quick Start
+## How it compares
+
+|                    | OpenRouter         | LiteLLM            | Martian            | Portkey              | **ClawRouter**            |
+| ------------------ | ------------------ | ------------------ | ------------------ | -------------------- | ------------------------- |
+| **Models**         | 200+               | 100+               | Smart routing      | Gateway              | **41+**                   |
+| **Routing**        | Manual selection   | Manual selection   | Smart (closed)     | Observability        | **Smart (open source)**   |
+| **Auth**           | Account + API key  | Your API keys      | Account + API key  | Account + API key    | **Wallet signature**      |
+| **Payment**        | Credit card        | BYO keys           | Credit card        | $49-499/mo           | **USDC per-request**      |
+| **Runs locally**   | No                 | Yes                | No                 | No                   | **Yes**                   |
+| **Open source**    | No                 | Yes                | No                 | Partial              | **Yes**                   |
+| **Agent-ready**    | No                 | No                 | No                 | No                   | **Yes**                   |
+
+✓ Open source · ✓ Smart routing · ✓ Runs locally · ✓ Crypto native · ✓ Agent ready
+
+**We're the only one that checks all five boxes.**
+
+---
+
+## Quick Start
 
 ```bash
 # 1. Install with smart routing enabled
@@ -63,11 +81,11 @@ openclaw gateway restart
 # $5 is enough for thousands of requests
 ```
 
-Done! Smart routing (`blockrun/auto`) is now your default model.
+Done. Smart routing (`blockrun/auto`) is now your default model.
 
 ---
 
-## 🎯 Routing Profiles
+## Routing Profiles
 
 Choose your routing strategy with `/model <profile>`:
 
@@ -82,7 +100,26 @@ Choose your routing strategy with `/model <profile>`:
 
 ---
 
-## 🎨 Image Generation
+## How It Works
+
+**100% local routing. <1ms latency. Zero external API calls.**
+
+```
+Request → Weighted Scorer (15 dimensions) → Tier → Best Model → Response
+```
+
+| Tier      | ECO Model                           | AUTO Model                   | PREMIUM Model                |
+| --------- | ----------------------------------- | ---------------------------- | ---------------------------- |
+| SIMPLE    | nvidia/gpt-oss-120b (FREE)          | kimi-k2.5 ($0.60/$3.00)      | kimi-k2.5                    |
+| MEDIUM    | gemini-2.5-flash-lite ($0.10/$0.40) | grok-code-fast ($0.20/$1.50) | gpt-5.2-codex ($1.75/$14.00) |
+| COMPLEX   | gemini-2.5-flash-lite ($0.10/$0.40) | gemini-3.1-pro ($2/$12)      | claude-opus-4.6 ($5/$25)     |
+| REASONING | grok-4-fast ($0.20/$0.50)           | grok-4-fast ($0.20/$0.50)    | claude-sonnet-4.6 ($3/$15)   |
+
+**Blended average: $2.05/M** vs $25/M for Claude Opus = **92% savings**
+
+---
+
+## Image Generation
 
 Generate images directly from chat with `/imagegen`:
 
@@ -100,16 +137,13 @@ Generate images directly from chat with `/imagegen`:
 | `gpt-image`   | OpenAI GPT Image 1    | $0.02/image | 1536x1024 |
 | `flux`        | Black Forest Flux 1.1 | $0.04/image | 1024x1024 |
 
-Default model: `nano-banana`. Images are returned as hosted URLs for compatibility with Telegram, Discord, and other clients.
+## Image Editing (img2img)
 
-## ✏️ Image Editing (img2img)
-
-Edit existing images with `/img2img` — pass a local file and describe what to change:
+Edit existing images with `/img2img`:
 
 ```
 /img2img --image ~/photo.png change the background to a starry sky
 /img2img --image ./cat.jpg --mask ./mask.png remove the background
-/img2img --image /tmp/portrait.png --size 1536x1024 add a hat
 ```
 
 | Option            | Required | Description                           |
@@ -119,40 +153,11 @@ Edit existing images with `/img2img` — pass a local file and describe what to 
 | `--model <model>` | No       | Model to use (default: `gpt-image-1`) |
 | `--size <WxH>`    | No       | Output size (default: `1024x1024`)    |
 
-Supported model: `gpt-image-1` (OpenAI GPT Image 1, $0.02/image).
-
-**API endpoint:** `POST http://localhost:8402/v1/images/image2image` — accepts local file paths, URLs, or base64 data URIs:
-
-```bash
-curl -X POST http://localhost:8402/v1/images/image2image \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"add sunglasses","image":"~/photo.png"}'
-```
-
-See [Image Generation & Editing docs](docs/image-generation.md#post-v1imagesimage2image) for full API reference and code examples.
+**API endpoint:** `POST http://localhost:8402/v1/images/image2image` — see [full docs](docs/image-generation.md#post-v1imagesimage2image).
 
 ---
 
-## ⚡ How It Works
-
-**100% local routing. <1ms latency. Zero external API calls.**
-
-```
-Request → Weighted Scorer (15 dimensions) → Tier → Cheapest Model → Response
-```
-
-| Tier      | ECO Model                           | AUTO Model                   | PREMIUM Model                |
-| --------- | ----------------------------------- | ---------------------------- | ---------------------------- |
-| SIMPLE    | nvidia/gpt-oss-120b (FREE)          | kimi-k2.5 ($0.60/$3.00)      | kimi-k2.5                    |
-| MEDIUM    | gemini-2.5-flash-lite ($0.10/$0.40) | grok-code-fast ($0.20/$1.50) | gpt-5.2-codex ($1.75/$14.00) |
-| COMPLEX   | gemini-2.5-flash-lite ($0.10/$0.40) | gemini-3.1-pro ($2/$12)      | claude-opus-4.6 ($5/$25)     |
-| REASONING | grok-4-fast ($0.20/$0.50)           | grok-4-fast ($0.20/$0.50)    | claude-sonnet-4.6 ($3/$15)   |
-
-**Blended average: $2.05/M** vs $25/M for Claude Opus = **92% savings**
-
----
-
-## 💰 Models & Pricing
+## Models & Pricing
 
 41+ models across 7 providers, one wallet:
 
@@ -199,31 +204,7 @@ Request → Weighted Scorer (15 dimensions) → Tier → Cheapest Model → Resp
 
 ---
 
-## 📸 Screenshots
-
-<table>
-<tr>
-<td width="50%" align="center">
-<strong>Smart Routing in Action</strong><br><br>
-<img src="docs/clawrouter-savings.png" alt="ClawRouter savings" width="400">
-</td>
-<td width="50%" align="center">
-<strong>Telegram Integration</strong><br><br>
-<img src="assets/telegram-demo.png" alt="Telegram demo" width="400">
-</td>
-</tr>
-</table>
-
-**The flow:**
-
-1. **Wallet auto-generated** on Base (L2) — saved at `~/.openclaw/blockrun/wallet.key`
-2. **Fund with $1 USDC** — enough for hundreds of requests
-3. **Request any model** — ClawRouter picks the cheapest capable one
-4. **Pay per request** — non-custodial, you hold your keys
-
----
-
-## 💳 Payment
+## Payment
 
 No account. No API key. **Payment IS authentication** via [x402](https://x402.org).
 
@@ -231,9 +212,9 @@ No account. No API key. **Payment IS authentication** via [x402](https://x402.or
 Request → 402 (price: $0.003) → wallet signs USDC → retry → response
 ```
 
-USDC stays in your wallet until spent - non-custodial. Price is visible in the 402 header before signing.
+USDC stays in your wallet until spent — non-custodial. Price is visible in the 402 header before signing.
 
-**Dual-chain support:** Pay with **USDC** on **Base (EVM)** or **USDC on Solana** — no SOL token accepted. Both wallets are derived from a single BIP-39 mnemonic on first run.
+**Dual-chain support:** Pay with **USDC** on **Base (EVM)** or **USDC on Solana**. Both wallets are derived from a single BIP-39 mnemonic on first run.
 
 ```bash
 /wallet              # Check balance and address (both chains)
@@ -251,11 +232,28 @@ USDC stays in your wallet until spent - non-custodial. Price is visible in the 4
 - **Base (EVM):** Send USDC on Base to your EVM address
 - **Solana:** Send USDC on Solana to your Solana address
 - **Coinbase/CEX:** Withdraw USDC to either network
-- **Credit card:** Don't have USDC? Reach out to [@bc1max on Telegram](https://t.me/bc1max) — we accept credit card payments
+- **Credit card:** Reach out to [@bc1max on Telegram](https://t.me/bc1max)
 
 ---
 
-## ⚙️ Configuration
+## Screenshots
+
+<table>
+<tr>
+<td width="50%" align="center">
+<strong>Smart Routing in Action</strong><br><br>
+<img src="docs/clawrouter-savings.png" alt="ClawRouter savings" width="400">
+</td>
+<td width="50%" align="center">
+<strong>Telegram Integration</strong><br><br>
+<img src="assets/telegram-demo.png" alt="Telegram demo" width="400">
+</td>
+</tr>
+</table>
+
+---
+
+## Configuration
 
 For basic usage, no configuration needed. For advanced options:
 
@@ -270,22 +268,7 @@ For basic usage, no configuration needed. For advanced options:
 
 ---
 
-## 🥊 vs OpenRouter
-
-|                 | OpenRouter / LiteLLM        | ClawRouter                       |
-| --------------- | --------------------------- | -------------------------------- |
-| **Setup**       | Human creates account       | Agent generates wallet           |
-| **Auth**        | API key (shared secret)     | Wallet signature (cryptographic) |
-| **Payment**     | Prepaid balance (custodial) | Per-request (non-custodial)      |
-| **Routing**     | Proprietary / closed        | Open source, client-side         |
-| **Rate limits** | Per-key quotas              | None (your wallet, your limits)  |
-| **Cost**        | $25/M (Opus equivalent)     | $2.05/M blended average          |
-
-**[Full comparison →](docs/vs-openrouter.md)**
-
----
-
-## 🩺 Troubleshooting
+## Troubleshooting
 
 **When things go wrong, run the doctor:**
 
@@ -333,7 +316,7 @@ npx @blockrun/clawrouter doctor opus "深度分析我的配置"
 
 ---
 
-## 🛠 Development
+## Development
 
 ```bash
 git clone https://github.com/BlockRunAI/ClawRouter.git
@@ -345,7 +328,7 @@ npm test
 
 ---
 
-## 📞 Support
+## Support
 
 | Channel               | Link                                                               |
 | --------------------- | ------------------------------------------------------------------ |
@@ -357,16 +340,16 @@ npm test
 
 ---
 
-## 🦞 From the BlockRun Ecosystem
+## From the BlockRun Ecosystem
 
 <table>
 <tr>
 <td width="50%">
 
 ### ⚡ ClawRouter
-**Smart LLM Router — 92% Cost Savings**
+**The LLM router built for autonomous agents**
 
-You're here. 41+ models, <1ms routing, auto cost optimization.
+You're here. 41+ models, local smart routing, x402 USDC payments — the only stack that lets agents operate independently.
 
 `curl -fsSL https://blockrun.ai/ClawRouter-update | bash`
 
@@ -374,9 +357,9 @@ You're here. 41+ models, <1ms routing, auto cost optimization.
 <td width="50%">
 
 ### 🦞 [SocialClaw](https://github.com/BlockRunAI/socialclaw)
-**X/Twitter Marketing Intelligence**
+**Intelligence-as-a-function for X/Twitter**
 
-Grow your X to 5M+ views in 3 months. Trend detection, audience insights, KOL discovery, engagement targets — 7 marketing workflows, all from your AI agent.
+The first X analytics an agent can call. One function call = one intelligence report. $0.08, not $49/month. No dashboard, no login, no subscription.
 
 `pip install blockrun-llm[solana]`
 
@@ -386,11 +369,9 @@ Grow your X to 5M+ views in 3 months. Trend detection, audience insights, KOL di
 </tr>
 </table>
 
-> **ClawRouter + SocialClaw together:** ClawRouter handles your LLM routing. SocialClaw uses that same infrastructure to pull real-time X/Twitter data and turn it into growth strategy. Same wallet, same payment layer, two superpowers.
-
 ---
 
-## 📚 More Resources
+## More Resources
 
 | Resource                                               | Description              |
 | ------------------------------------------------------ | ------------------------ |
@@ -400,16 +381,14 @@ Grow your X to 5M+ views in 3 months. Trend detection, audience insights, KOL di
 | [Routing Profiles](docs/routing-profiles.md)           | ECO/AUTO/PREMIUM details |
 | [Architecture](docs/architecture.md)                   | Technical deep dive      |
 | [Configuration](docs/configuration.md)                 | Environment variables    |
-| [vs OpenRouter](docs/vs-openrouter.md)                 | Why ClawRouter wins      |
-| [Features](docs/features.md)                           | All features             |
 | [Troubleshooting](docs/troubleshooting.md)             | Common issues            |
 
 ---
 
 <div align="center">
 
-**MIT License** · [BlockRun](https://blockrun.ai) — Pay-per-request AI infrastructure
+**MIT License** · [BlockRun](https://blockrun.ai) — Agent-native AI infrastructure
 
-⭐ If ClawRouter saves you money, consider starring the repo!
+⭐ If ClawRouter powers your agents, consider starring the repo!
 
 </div>
