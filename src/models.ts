@@ -46,7 +46,7 @@ export const MODEL_ALIASES: Record<string, string> = {
   gpt5: "openai/gpt-5.4",
   "gpt-5.4": "openai/gpt-5.4",
   "gpt-5.4-pro": "openai/gpt-5.4-pro",
-  codex: "openai/gpt-5.2-codex",
+  codex: "openai/gpt-5.3-codex",
   mini: "openai/gpt-4o-mini",
   o1: "openai/o1",
   o3: "openai/o3",
@@ -256,15 +256,30 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     toolCalling: true,
   },
 
-  // OpenAI Codex Family
+  // OpenAI GPT-5.3 Family
   {
-    id: "openai/gpt-5.2-codex",
-    name: "GPT-5.2 Codex",
-    version: "5.2",
+    id: "openai/gpt-5.3",
+    name: "GPT-5.3",
+    version: "5.3",
     inputPrice: 1.75,
     outputPrice: 14.0,
     contextWindow: 128000,
-    maxOutput: 32000,
+    maxOutput: 16000,
+    reasoning: true,
+    vision: true,
+    agentic: true,
+    toolCalling: true,
+  },
+
+  // OpenAI Codex Family
+  {
+    id: "openai/gpt-5.3-codex",
+    name: "GPT-5.3 Codex",
+    version: "5.3",
+    inputPrice: 1.75,
+    outputPrice: 14.0,
+    contextWindow: 400000,
+    maxOutput: 128000,
     agentic: true,
     toolCalling: true,
   },

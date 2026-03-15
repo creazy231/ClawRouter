@@ -1119,7 +1119,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       ],
     },
     MEDIUM: {
-      primary: "openai/gpt-5.2-codex", // $2.50/$10 - strong coding for medium tasks
+      primary: "openai/gpt-5.3-codex", // $1.75/$14 - 400K context, 128K output, replaces 5.2
       fallback: [
         "moonshot/kimi-k2.5",
         "google/gemini-2.5-flash", // 60% retention, good coding capability
@@ -1132,7 +1132,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       primary: "anthropic/claude-opus-4.6", // Best quality for complex tasks
       fallback: [
         "openai/gpt-5.4", // Newest flagship
-        "openai/gpt-5.2-codex",
+        "openai/gpt-5.3-codex",
         "anthropic/claude-opus-4.6",
         "anthropic/claude-sonnet-4.6",
         "google/gemini-3.1-pro", // Newest Gemini

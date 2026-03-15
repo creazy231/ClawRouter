@@ -14,7 +14,7 @@
  *   openclaw models set blockrun/auto
  *
  *   # Or use any specific BlockRun model
- *   openclaw models set openai/gpt-5.2
+ *   openclaw models set openai/gpt-5.3
  */
 
 import type {
@@ -272,7 +272,7 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
     "anthropic/claude-sonnet-4.6",
     "anthropic/claude-opus-4.6",
     "anthropic/claude-haiku-4.5",
-    "openai/gpt-5.2",
+    "openai/gpt-5.3",
     "openai/gpt-4o",
     "openai/o3",
     "google/gemini-3.1-pro",
