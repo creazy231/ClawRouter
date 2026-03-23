@@ -111,9 +111,7 @@ export class SolanaBalanceMonitor {
     const timer = setTimeout(() => controller.abort(), BALANCE_TIMEOUT_MS);
     try {
       const owner = solAddress(this.walletAddress);
-      const response = await this.rpc
-        .getBalance(owner)
-        .send({ abortSignal: controller.signal });
+      const response = await this.rpc.getBalance(owner).send({ abortSignal: controller.signal });
       return BigInt(response.value);
     } catch {
       return 0n;

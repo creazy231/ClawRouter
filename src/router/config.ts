@@ -1113,7 +1113,12 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
     },
     COMPLEX: {
       primary: "google/gemini-3.1-flash-lite", // $0.25/$1.50 — 1M context handles complexity
-      fallback: ["google/gemini-2.5-flash-lite", "xai/grok-4-0709", "google/gemini-2.5-flash", "deepseek/deepseek-chat"],
+      fallback: [
+        "google/gemini-2.5-flash-lite",
+        "xai/grok-4-0709",
+        "google/gemini-2.5-flash",
+        "deepseek/deepseek-chat",
+      ],
     },
     REASONING: {
       primary: "xai/grok-4-1-fast-reasoning", // 1,454ms, $0.20/$0.50

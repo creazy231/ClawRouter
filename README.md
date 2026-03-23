@@ -434,21 +434,27 @@ The first X analytics an agent can call. One function call = one intelligence re
 ## Frequently Asked Questions
 
 ### What is ClawRouter?
+
 ClawRouter is an open-source (MIT licensed) smart LLM router built for autonomous AI agents. It analyzes each request across 15 dimensions and routes to the cheapest capable model in under 1ms, entirely locally — no external API calls needed for routing decisions.
 
 ### How much can ClawRouter save on LLM costs?
+
 ClawRouter's blended average cost is $2.05 per million tokens compared to $25/M for Claude Opus, representing 92% savings. Actual savings depend on your workload — simple queries are routed to budget models (as low as $0/request with NVIDIA free tier), while complex tasks get premium models.
 
 ### How does ClawRouter compare to OpenRouter?
+
 ClawRouter is open source and runs locally. It uses wallet-based authentication (no API keys) and USDC per-request payments (no credit cards or subscriptions). OpenRouter requires an account, API key, and credit card. ClawRouter also features smart routing — it automatically picks the best model for each request, while OpenRouter requires manual model selection.
 
 ### How does ClawRouter compare to LiteLLM?
+
 Both are open source and run locally. But ClawRouter adds smart routing (automatic model selection), wallet-based auth, and USDC payments. LiteLLM requires you to bring your own API keys and manually choose models.
 
 ### What agents does ClawRouter work with?
+
 ClawRouter integrates with OpenClaw (Claude Code), ElizaOS, and any agent that makes OpenAI-compatible API calls. It runs as a local proxy on port 8402.
 
 ### Is ClawRouter free?
+
 ClawRouter itself is free and MIT licensed. You pay only for the LLM API calls routed through it — and NVIDIA GPT-OSS models are completely free, so you can even use it at zero cost.
 
 ---
