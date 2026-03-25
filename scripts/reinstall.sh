@@ -320,7 +320,7 @@ try {
 
   // Curated models for the /model picker
   const TOP_MODELS = [
-    'auto', 'free', 'eco', 'premium',
+    'auto', 'eco', 'premium',
     'anthropic/claude-sonnet-4.6', 'anthropic/claude-opus-4.6', 'anthropic/claude-haiku-4.5',
     'openai/gpt-5.4', 'openai/gpt-5.4-pro', 'openai/gpt-5.3', 'openai/gpt-5.3-codex',
     'openai/gpt-5-mini', 'openai/gpt-5-nano', 'openai/gpt-5.4-nano', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/o3', 'openai/o4-mini',
@@ -453,7 +453,7 @@ echo "  /model sonnet    → claude-sonnet-4.6"
 echo "  /model opus      → claude-opus-4.6"
 echo "  /model codex     → openai/gpt-5.3-codex"
 echo "  /model deepseek  → deepseek/deepseek-chat"
-echo "  /model free      → 11 free NVIDIA models (smart routed)"
+echo "  /model free      → nemotron-ultra-253b (strongest free)"
 echo ""
 echo "Free models (no wallet needed):"
 echo "  /model nemotron       → nemotron-ultra-253b (strongest free)"

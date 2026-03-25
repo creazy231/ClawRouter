@@ -38,11 +38,7 @@ export class RulesStrategy implements RouterStrategy {
     let profileSuffix: string;
     let profile: RoutingDecision["profile"];
 
-    if (routingProfile === "free" && config.freeTiers) {
-      tierConfigs = config.freeTiers;
-      profileSuffix = " | free";
-      profile = "free";
-    } else if (routingProfile === "eco" && config.ecoTiers) {
+    if (routingProfile === "eco" && config.ecoTiers) {
       tierConfigs = config.ecoTiers;
       profileSuffix = " | eco";
       profile = "eco";

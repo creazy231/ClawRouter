@@ -98,8 +98,6 @@ const IMAGE_DIR = join(homedir(), ".openclaw", "blockrun", "images");
 const AUTO_MODEL = "blockrun/auto";
 
 const ROUTING_PROFILES = new Set([
-  "blockrun/free",
-  "free",
   "blockrun/eco",
   "eco",
   "blockrun/auto",
@@ -121,25 +119,6 @@ const FREE_MODELS = new Set([
   "nvidia/glm-4.7",
   "nvidia/llama-4-maverick",
 ]);
-const FREE_TIER_CONFIGS: Record<Tier, { primary: string; fallback: string[] }> = {
-  SIMPLE: {
-    primary: "nvidia/gpt-oss-20b",
-    fallback: ["nvidia/gpt-oss-120b", "nvidia/nemotron-super-49b"],
-  },
-  MEDIUM: {
-    primary: "nvidia/deepseek-v3.2",
-    fallback: ["nvidia/gpt-oss-120b", "nvidia/nemotron-super-49b"],
-  },
-  COMPLEX: {
-    primary: "nvidia/nemotron-ultra-253b",
-    fallback: ["nvidia/mistral-large-3-675b", "nvidia/deepseek-v3.2", "nvidia/gpt-oss-120b"],
-  },
-  REASONING: {
-    primary: "nvidia/nemotron-ultra-253b",
-    fallback: ["nvidia/nemotron-3-super-120b", "nvidia/deepseek-v3.2"],
-  },
-};
-let freeRequestCount = 0;
 const MAX_MESSAGES = 200; // BlockRun API limit - truncate older messages if exceeded
 const CONTEXT_LIMIT_KB = 5120; // Server-side limit: 5MB in KB
 const HEARTBEAT_INTERVAL_MS = 2_000;
@@ -2465,7 +2444,7 @@ async function proxyRequest(
   let isStreaming = false;
   let modelId = "";
   let maxTokens = 4096;
-  let routingProfile: "free" | "eco" | "auto" | "premium" | null = null;
+  let routingProfile: "eco" | "auto" | "premium" | null = null;
   let balanceFallbackNotice: string | undefined;
   let budgetDowngradeNotice: string | undefined;
   let budgetDowngradeHeaderMode: "downgraded" | undefined;
@@ -2548,8 +2527,8 @@ async function proxyRequest(
           typeof parsed.model === "string" ? parsed.model.trim().toLowerCase() : "";
         const profileName = normalizedModel.replace("blockrun/", "");
         const debugProfile = (
-          ["free", "eco", "auto", "premium"].includes(profileName) ? profileName : "auto"
-        ) as "free" | "eco" | "auto" | "premium";
+          ["eco", "auto", "premium"].includes(profileName) ? profileName : "auto"
+        ) as "eco" | "auto" | "premium";
 
         // Run scoring
         const scoring = classifyByRules(
@@ -3111,7 +3090,7 @@ async function proxyRequest(
       // Extract routing profile type (free/eco/auto/premium)
       if (isRoutingProfile) {
         const profileName = resolvedModel.replace("blockrun/", "");
-        routingProfile = profileName as "free" | "eco" | "auto" | "premium";
+        routingProfile = profileName as "eco" | "auto" | "premium";
       }
 
       // Debug: log received model name
@@ -3305,14 +3284,6 @@ async function proxyRequest(
           }
 
           options.onRouted?.(routingDecision);
-
-          // Nudge every 5th free-profile request toward paid models
-          if (routingProfile === "free") {
-            freeRequestCount++;
-            if (freeRequestCount % 5 === 0) {
-              balanceFallbackNotice = `> **💡 Tip:** Free tier gives you 11 NVIDIA models. Want Claude, GPT-5, or Gemini? Fund your wallet — starting at $0.001/request.\n\n`;
-            }
-          }
         }
       }
 
@@ -3455,31 +3426,22 @@ async function proxyRequest(
       const sufficiency = await balanceMonitor.checkSufficient(bufferedCostMicros);
 
       if (sufficiency.info.isEmpty || !sufficiency.sufficient) {
-        // Wallet is empty or insufficient — fallback to best free model for this tier
+        // Wallet is empty or insufficient — fallback to free model
         const originalModel = modelId;
-        const fallbackTier = routingDecision?.tier ?? "SIMPLE";
-        const freeTierConfig = FREE_TIER_CONFIGS[fallbackTier];
-        const freeModel = freeTierConfig.primary;
         console.log(
-          `[ClawRouter] Wallet ${sufficiency.info.isEmpty ? "empty" : "insufficient"} (${sufficiency.info.balanceUSD}), falling back to free model: ${freeModel} (tier: ${fallbackTier}, requested: ${originalModel})`,
+          `[ClawRouter] Wallet ${sufficiency.info.isEmpty ? "empty" : "insufficient"} (${sufficiency.info.balanceUSD}), falling back to free model: ${FREE_MODEL} (requested: ${originalModel})`,
         );
-        modelId = freeModel;
+        modelId = FREE_MODEL;
         isFreeModel = true; // keep in sync — budget logic gates on !isFreeModel
         // Update the body with new model
         const parsed = JSON.parse(body.toString()) as Record<string, unknown>;
-        parsed.model = freeModel;
+        parsed.model = FREE_MODEL;
         body = Buffer.from(JSON.stringify(parsed));
 
         // Set notice to prepend to response so user knows about the fallback
         balanceFallbackNotice = sufficiency.info.isEmpty
           ? `> **⚠️ Wallet empty** — using free model. Fund your wallet to use ${originalModel}.\n\n`
           : `> **⚠️ Insufficient balance** (${sufficiency.info.balanceUSD}) — using free model instead of ${originalModel}.\n\n`;
-
-        // Also count balance-fallback as a free request for upgrade nudge
-        freeRequestCount++;
-        if (freeRequestCount % 5 === 0) {
-          balanceFallbackNotice = `> **💡 Tip:** Free tier gives you 11 NVIDIA models. Want Claude, GPT-5, or Gemini? Fund your wallet — starting at $0.001/request.\n\n`;
-        }
 
         // Notify about the fallback
         options.onLowBalance?.({

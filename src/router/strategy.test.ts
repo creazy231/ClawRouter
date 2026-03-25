@@ -50,44 +50,7 @@ describe("RulesStrategy", () => {
     const decision = strategy.route("hello", undefined, 100, baseOptions);
 
     expect(decision.profile).toBeDefined();
-    expect(["auto", "eco", "premium", "agentic", "free"]).toContain(decision.profile);
-  });
-
-  it("sets free profile when routingProfile is free", () => {
-    const strategy = new RulesStrategy();
-    const decision = strategy.route("hello", undefined, 100, {
-      ...baseOptions,
-      routingProfile: "free",
-    });
-
-    expect(decision.profile).toBe("free");
-    expect(decision.tierConfigs).toEqual(DEFAULT_ROUTING_CONFIG.freeTiers);
-    // Free profile should only route to NVIDIA free models
-    expect(decision.model).toMatch(/^nvidia\//);
-  });
-
-  it("routes free profile SIMPLE to fast model", () => {
-    const strategy = new RulesStrategy();
-    const decision = strategy.route("hello", undefined, 100, {
-      ...baseOptions,
-      routingProfile: "free",
-    });
-
-    expect(decision.tier).toBe("SIMPLE");
-    expect(decision.model).toBe("nvidia/gpt-oss-20b");
-  });
-
-  it("routes free profile REASONING to nemotron-ultra", () => {
-    const strategy = new RulesStrategy();
-    const decision = strategy.route(
-      "prove the theorem step by step using mathematical induction",
-      undefined,
-      4096,
-      { ...baseOptions, routingProfile: "free" },
-    );
-
-    expect(decision.tier).toBe("REASONING");
-    expect(decision.model).toBe("nvidia/nemotron-ultra-253b");
+    expect(["auto", "eco", "premium", "agentic"]).toContain(decision.profile);
   });
 
   it("sets eco profile when routingProfile is eco", () => {

@@ -32,7 +32,7 @@ export type RoutingDecision = {
   /** Which tier configs were used (auto/eco/premium/agentic) — avoids re-derivation in proxy */
   tierConfigs?: Record<Tier, TierConfig>;
   /** Which routing profile was applied */
-  profile?: "auto" | "eco" | "premium" | "agentic" | "free";
+  profile?: "auto" | "eco" | "premium" | "agentic";
 };
 
 export interface RouterStrategy {
@@ -48,7 +48,7 @@ export interface RouterStrategy {
 export type RouterOptions = {
   config: RoutingConfig;
   modelPricing: Map<string, import("./selector.js").ModelPricing>;
-  routingProfile?: "free" | "eco" | "auto" | "premium";
+  routingProfile?: "eco" | "auto" | "premium";
   hasTools?: boolean;
 };
 
@@ -115,7 +115,5 @@ export type RoutingConfig = {
   ecoTiers?: Record<Tier, TierConfig>;
   /** Tier configs for premium profile - best quality (blockrun/premium) */
   premiumTiers?: Record<Tier, TierConfig>;
-  /** Tier configs for free profile - NVIDIA free models only (blockrun/free) */
-  freeTiers?: Record<Tier, TierConfig>;
   overrides: OverridesConfig;
 };

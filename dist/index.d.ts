@@ -183,12 +183,12 @@ type RoutingDecision = {
     /** Which tier configs were used (auto/eco/premium/agentic) — avoids re-derivation in proxy */
     tierConfigs?: Record<Tier, TierConfig>;
     /** Which routing profile was applied */
-    profile?: "auto" | "eco" | "premium" | "agentic" | "free";
+    profile?: "auto" | "eco" | "premium" | "agentic";
 };
 type RouterOptions = {
     config: RoutingConfig;
     modelPricing: Map<string, ModelPricing>;
-    routingProfile?: "free" | "eco" | "auto" | "premium";
+    routingProfile?: "eco" | "auto" | "premium";
     hasTools?: boolean;
 };
 type TierConfig = {
@@ -250,8 +250,6 @@ type RoutingConfig = {
     ecoTiers?: Record<Tier, TierConfig>;
     /** Tier configs for premium profile - best quality (blockrun/premium) */
     premiumTiers?: Record<Tier, TierConfig>;
-    /** Tier configs for free profile - NVIDIA free models only (blockrun/free) */
-    freeTiers?: Record<Tier, TierConfig>;
     overrides: OverridesConfig;
 };
 
@@ -835,7 +833,7 @@ declare const blockrunProvider: ProviderPlugin;
 /**
  * BlockRun Model Definitions for OpenClaw
  *
- * Maps BlockRun's 30+ AI models to OpenClaw's ModelDefinitionConfig format.
+ * Maps BlockRun's 55+ AI models to OpenClaw's ModelDefinitionConfig format.
  * All models use the "openai-completions" API since BlockRun is OpenAI-compatible.
  *
  * Pricing is in USD per 1M tokens. Operators pay these rates via x402;
@@ -1366,7 +1364,7 @@ declare function buildPartnerTools(proxyBaseUrl: string): PartnerToolDefinition[
 /**
  * @blockrun/clawrouter
  *
- * Smart LLM router for OpenClaw — 30+ models, x402 micropayments, 78% cost savings.
+ * Smart LLM router for OpenClaw — 55+ models, x402 micropayments, 78% cost savings.
  * Routes each request to the cheapest model that can handle it.
  *
  * Usage:

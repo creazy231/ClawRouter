@@ -32935,10 +32935,12 @@ var MODEL_ALIASES = {
   glm: "zai/glm-5",
   "glm-5": "zai/glm-5",
   "glm-5-turbo": "zai/glm-5-turbo",
+  // Free alias — points to strongest free model
+  free: "nvidia/nemotron-ultra-253b",
   // Routing profile aliases (common variations)
   "auto-router": "auto",
   router: "auto"
-  // Note: auto, free, eco, premium are virtual routing profiles registered in BLOCKRUN_MODELS
+  // Note: auto, eco, premium are virtual routing profiles registered in BLOCKRUN_MODELS
   // They don't need aliases since they're already top-level model IDs
 };
 function resolveModelAlias(model) {
@@ -32970,14 +32972,6 @@ var BLOCKRUN_MODELS = [
     outputPrice: 0,
     contextWindow: 105e4,
     maxOutput: 128e3
-  },
-  {
-    id: "free",
-    name: "Free (Smart Router - 11 NVIDIA Models)",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 131072,
-    maxOutput: 16384
   },
   {
     id: "eco",
@@ -43717,11 +43711,7 @@ var RulesStrategy = class {
     let tierConfigs;
     let profileSuffix;
     let profile;
-    if (routingProfile === "free" && config.freeTiers) {
-      tierConfigs = config.freeTiers;
-      profileSuffix = " | free";
-      profile = "free";
-    } else if (routingProfile === "eco" && config.ecoTiers) {
+    if (routingProfile === "eco" && config.ecoTiers) {
       tierConfigs = config.ecoTiers;
       profileSuffix = " | eco";
       profile = "eco";
@@ -44910,7 +44900,7 @@ var DEFAULT_ROUTING_CONFIG = {
       ]
     }
   },
-  // Eco tier configs - absolute cheapest, free-first (blockrun/eco)
+  // Eco tier configs - absolute cheapest (blockrun/eco)
   ecoTiers: {
     SIMPLE: {
       primary: "nvidia/gpt-oss-120b",
@@ -44929,13 +44919,9 @@ var DEFAULT_ROUTING_CONFIG = {
       ]
     },
     MEDIUM: {
-      primary: "nvidia/deepseek-v3.2",
-      // FREE — DeepSeek V3.2 quality at zero cost
+      primary: "google/gemini-3.1-flash-lite",
+      // $0.25/$1.50 — newest flash-lite
       fallback: [
-        "nvidia/gpt-oss-120b",
-        // FREE fallback
-        "google/gemini-3.1-flash-lite",
-        // $0.25/$1.50
         "openai/gpt-5.4-nano",
         // $0.20/$1.25
         "google/gemini-2.5-flash-lite",
@@ -44945,15 +44931,9 @@ var DEFAULT_ROUTING_CONFIG = {
       ]
     },
     COMPLEX: {
-      primary: "nvidia/nemotron-ultra-253b",
-      // FREE — 253B reasoning model
+      primary: "google/gemini-3.1-flash-lite",
+      // $0.25/$1.50
       fallback: [
-        "nvidia/mistral-large-3-675b",
-        // FREE — 675B brute-force
-        "nvidia/deepseek-v3.2",
-        // FREE
-        "google/gemini-3.1-flash-lite",
-        // $0.25/$1.50
         "google/gemini-2.5-flash-lite",
         "xai/grok-4-0709",
         "google/gemini-2.5-flash",
@@ -44963,12 +44943,7 @@ var DEFAULT_ROUTING_CONFIG = {
     REASONING: {
       primary: "xai/grok-4-1-fast-reasoning",
       // $0.20/$0.50
-      fallback: [
-        "xai/grok-4-fast-reasoning",
-        "nvidia/nemotron-ultra-253b",
-        // FREE reasoning fallback
-        "deepseek/deepseek-reasoner"
-      ]
+      fallback: ["xai/grok-4-fast-reasoning", "deepseek/deepseek-reasoner"]
     }
   },
   // Premium tier configs - best quality (blockrun/premium)
@@ -45079,73 +45054,6 @@ var DEFAULT_ROUTING_CONFIG = {
         // 1,454ms
         "deepseek/deepseek-reasoner"
         // 1,454ms
-      ]
-    }
-  },
-  // Free tier configs - NVIDIA free models, smart-routed by task type (blockrun/free)
-  freeTiers: {
-    SIMPLE: {
-      primary: "nvidia/gpt-oss-20b",
-      // Fastest: small 20B for simple tasks
-      fallback: [
-        "nvidia/gpt-oss-120b",
-        // Solid general-purpose
-        "nvidia/nemotron-super-49b",
-        // Thinking mode
-        "nvidia/llama-4-maverick",
-        // MoE broad coverage
-        "nvidia/glm-4.7"
-        // Thinking mode
-      ]
-    },
-    MEDIUM: {
-      primary: "nvidia/deepseek-v3.2",
-      // DeepSeek V3.2 quality, zero cost
-      fallback: [
-        "nvidia/gpt-oss-120b",
-        // Strong 120B general-purpose
-        "nvidia/nemotron-super-49b",
-        // Thinking mode
-        "nvidia/mistral-large-3-675b",
-        // Largest Mistral
-        "nvidia/llama-4-maverick",
-        // MoE breadth
-        "nvidia/glm-4.7"
-        // Thinking mode
-      ]
-    },
-    COMPLEX: {
-      primary: "nvidia/nemotron-ultra-253b",
-      // Strongest free: 253B reasoning
-      fallback: [
-        "nvidia/mistral-large-3-675b",
-        // 675B massive params
-        "nvidia/deepseek-v3.2",
-        // V3.2 quality
-        "nvidia/nemotron-3-super-120b",
-        // Thinking mode MoE
-        "nvidia/qwen3-coder-480b",
-        // 480B MoE for code-heavy tasks
-        "nvidia/devstral-2-123b",
-        // Coding-focused
-        "nvidia/gpt-oss-120b"
-        // Last resort
-      ]
-    },
-    REASONING: {
-      primary: "nvidia/nemotron-ultra-253b",
-      // Best free reasoning: 253B
-      fallback: [
-        "nvidia/nemotron-3-super-120b",
-        // Thinking mode MoE
-        "nvidia/nemotron-super-49b",
-        // Thinking mode
-        "nvidia/deepseek-v3.2",
-        // DeepSeek reasoning
-        "nvidia/mistral-large-3-675b",
-        // Brute-force params
-        "nvidia/glm-4.7"
-        // GLM thinking mode
       ]
     }
   },
@@ -47369,8 +47277,6 @@ var BLOCKRUN_SOLANA_API = "https://sol.blockrun.ai/api";
 var IMAGE_DIR = join8(homedir5(), ".openclaw", "blockrun", "images");
 var AUTO_MODEL = "blockrun/auto";
 var ROUTING_PROFILES = /* @__PURE__ */ new Set([
-  "blockrun/free",
-  "free",
   "blockrun/eco",
   "eco",
   "blockrun/auto",
@@ -47392,25 +47298,6 @@ var FREE_MODELS = /* @__PURE__ */ new Set([
   "nvidia/glm-4.7",
   "nvidia/llama-4-maverick"
 ]);
-var FREE_TIER_CONFIGS = {
-  SIMPLE: {
-    primary: "nvidia/gpt-oss-20b",
-    fallback: ["nvidia/gpt-oss-120b", "nvidia/nemotron-super-49b"]
-  },
-  MEDIUM: {
-    primary: "nvidia/deepseek-v3.2",
-    fallback: ["nvidia/gpt-oss-120b", "nvidia/nemotron-super-49b"]
-  },
-  COMPLEX: {
-    primary: "nvidia/nemotron-ultra-253b",
-    fallback: ["nvidia/mistral-large-3-675b", "nvidia/deepseek-v3.2", "nvidia/gpt-oss-120b"]
-  },
-  REASONING: {
-    primary: "nvidia/nemotron-ultra-253b",
-    fallback: ["nvidia/nemotron-3-super-120b", "nvidia/deepseek-v3.2"]
-  }
-};
-var freeRequestCount = 0;
 var MAX_MESSAGES = 200;
 var CONTEXT_LIMIT_KB = 5120;
 var HEARTBEAT_INTERVAL_MS = 2e3;
@@ -48916,7 +48803,7 @@ async function proxyRequest(req, res, apiBase, payFetch, options, routerOpts, de
         const estimatedTokens = Math.ceil(fullText.length / 4);
         const normalizedModel2 = typeof parsed.model === "string" ? parsed.model.trim().toLowerCase() : "";
         const profileName = normalizedModel2.replace("blockrun/", "");
-        const debugProfile = ["free", "eco", "auto", "premium"].includes(profileName) ? profileName : "auto";
+        const debugProfile = ["eco", "auto", "premium"].includes(profileName) ? profileName : "auto";
         const scoring = classifyByRules(
           debugPrompt,
           systemPrompt,
@@ -49536,14 +49423,6 @@ async function proxyRequest(req, res, apiBase, payFetch, options, routerOpts, de
             }
           }
           options.onRouted?.(routingDecision);
-          if (routingProfile === "free") {
-            freeRequestCount++;
-            if (freeRequestCount % 5 === 0) {
-              balanceFallbackNotice = `> **\u{1F4A1} Tip:** Free tier gives you 11 NVIDIA models. Want Claude, GPT-5, or Gemini? Fund your wallet \u2014 starting at $0.001/request.
-
-`;
-            }
-          }
         }
       }
       if (!effectiveSessionId && parsedMessages.length > 0) {
@@ -49648,28 +49527,19 @@ async function proxyRequest(req, res, apiBase, payFetch, options, routerOpts, de
       const sufficiency = await balanceMonitor.checkSufficient(bufferedCostMicros);
       if (sufficiency.info.isEmpty || !sufficiency.sufficient) {
         const originalModel = modelId;
-        const fallbackTier = routingDecision?.tier ?? "SIMPLE";
-        const freeTierConfig = FREE_TIER_CONFIGS[fallbackTier];
-        const freeModel = freeTierConfig.primary;
         console.log(
-          `[ClawRouter] Wallet ${sufficiency.info.isEmpty ? "empty" : "insufficient"} (${sufficiency.info.balanceUSD}), falling back to free model: ${freeModel} (tier: ${fallbackTier}, requested: ${originalModel})`
+          `[ClawRouter] Wallet ${sufficiency.info.isEmpty ? "empty" : "insufficient"} (${sufficiency.info.balanceUSD}), falling back to free model: ${FREE_MODEL} (requested: ${originalModel})`
         );
-        modelId = freeModel;
+        modelId = FREE_MODEL;
         isFreeModel = true;
         const parsed = JSON.parse(body.toString());
-        parsed.model = freeModel;
+        parsed.model = FREE_MODEL;
         body = Buffer.from(JSON.stringify(parsed));
         balanceFallbackNotice = sufficiency.info.isEmpty ? `> **\u26A0\uFE0F Wallet empty** \u2014 using free model. Fund your wallet to use ${originalModel}.
 
 ` : `> **\u26A0\uFE0F Insufficient balance** (${sufficiency.info.balanceUSD}) \u2014 using free model instead of ${originalModel}.
 
 `;
-        freeRequestCount++;
-        if (freeRequestCount % 5 === 0) {
-          balanceFallbackNotice = `> **\u{1F4A1} Tip:** Free tier gives you 11 NVIDIA models. Want Claude, GPT-5, or Gemini? Fund your wallet \u2014 starting at $0.001/request.
-
-`;
-        }
         options.onLowBalance?.({
           balanceUSD: sufficiency.info.balanceUSD,
           walletAddress: sufficiency.info.walletAddress
@@ -50987,9 +50857,7 @@ function installSkillsToWorkspace(logger) {
       logger.info(`Installed ${installed} skill(s) to ${workspaceSkillsDir}`);
     }
   } catch (err) {
-    logger.warn(
-      `Failed to install skills: ${err instanceof Error ? err.message : String(err)}`
-    );
+    logger.warn(`Failed to install skills: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 function isCompletionMode() {
@@ -51119,7 +50987,6 @@ function injectModelsConfig(logger) {
   }
   const TOP_MODELS = [
     "auto",
-    "free",
     "eco",
     "premium",
     "anthropic/claude-sonnet-4.6",
@@ -51135,7 +51002,19 @@ function injectModelsConfig(logger) {
     "deepseek/deepseek-chat",
     "moonshot/kimi-k2.5",
     "xai/grok-3",
-    "minimax/minimax-m2.5"
+    "minimax/minimax-m2.5",
+    // Free NVIDIA models
+    "nvidia/gpt-oss-120b",
+    "nvidia/gpt-oss-20b",
+    "nvidia/nemotron-ultra-253b",
+    "nvidia/deepseek-v3.2",
+    "nvidia/mistral-large-3-675b",
+    "nvidia/qwen3-coder-480b",
+    "nvidia/devstral-2-123b",
+    "nvidia/llama-4-maverick",
+    "nvidia/nemotron-3-super-120b",
+    "nvidia/nemotron-super-49b",
+    "nvidia/glm-4.7"
   ];
   if (!defaults.models || typeof defaults.models !== "object" || Array.isArray(defaults.models)) {
     defaults.models = {};
@@ -51670,7 +51549,7 @@ Run \`openclaw plugins install @blockrun/clawrouter\` to generate a wallet.`,
 var plugin = {
   id: "clawrouter",
   name: "ClawRouter",
-  description: "Smart LLM router \u2014 30+ models, x402 micropayments, 78% cost savings",
+  description: "Smart LLM router \u2014 55+ models, x402 micropayments, 78% cost savings",
   version: VERSION,
   register(api) {
     const isDisabled = process["env"].CLAWROUTER_DISABLED === "true" || process["env"].CLAWROUTER_DISABLED === "1";
@@ -51700,7 +51579,7 @@ var plugin = {
       apiKey: "x402-proxy-handles-auth",
       models: OPENCLAW_MODELS
     };
-    api.logger.info("BlockRun provider registered (30+ models via x402)");
+    api.logger.info("BlockRun provider registered (55+ models via x402)");
     try {
       const proxyBaseUrl = `http://127.0.0.1:${runtimePort}`;
       const partnerTools = buildPartnerTools(proxyBaseUrl);

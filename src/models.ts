@@ -112,11 +112,14 @@ export const MODEL_ALIASES: Record<string, string> = {
   "glm-5": "zai/glm-5",
   "glm-5-turbo": "zai/glm-5-turbo",
 
+  // Free alias — points to strongest free model
+  free: "nvidia/nemotron-ultra-253b",
+
   // Routing profile aliases (common variations)
   "auto-router": "auto",
   router: "auto",
 
-  // Note: auto, free, eco, premium are virtual routing profiles registered in BLOCKRUN_MODELS
+  // Note: auto, eco, premium are virtual routing profiles registered in BLOCKRUN_MODELS
   // They don't need aliases since they're already top-level model IDs
 };
 
@@ -146,14 +149,14 @@ export function resolveModelAlias(model: string): string {
   }
 
   // Strip "openai/" prefix when it wraps a virtual routing profile or alias.
-  // OpenClaw sends virtual models as "openai/eco", "openai/free", etc. because
+  // OpenClaw sends virtual models as "openai/eco", "openai/auto", etc. because
   // the provider uses the openai-completions API type.
   if (normalized.startsWith("openai/")) {
     const withoutPrefix = normalized.slice("openai/".length);
     const resolvedWithoutPrefix = MODEL_ALIASES[withoutPrefix];
     if (resolvedWithoutPrefix) return resolvedWithoutPrefix;
 
-    // If it's a known BlockRun virtual profile (eco, free, auto, premium), return bare id
+    // If it's a known BlockRun virtual profile (eco, auto, premium), return bare id
     const isVirtualProfile = BLOCKRUN_MODELS.some((m) => m.id === withoutPrefix);
     if (isVirtualProfile) return withoutPrefix;
   }
@@ -197,14 +200,6 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     outputPrice: 0,
     contextWindow: 1_050_000,
     maxOutput: 128_000,
-  },
-  {
-    id: "free",
-    name: "Free (Smart Router - 11 NVIDIA Models)",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 131_072,
-    maxOutput: 16_384,
   },
   {
     id: "eco",
