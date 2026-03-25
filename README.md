@@ -91,12 +91,12 @@ Done. Smart routing (`blockrun/auto`) is now your default model.
 
 Choose your routing strategy with `/model <profile>`:
 
-| Profile          | Strategy           | Savings | Best For         |
-| ---------------- | ------------------ | ------- | ---------------- |
-| `/model auto`    | Balanced (default) | 74-100% | General use      |
-| `/model eco`     | Cheapest possible  | 95-100% | Maximum savings  |
-| `/model premium` | Best quality       | 0%      | Mission-critical |
-| `/model free`    | 11 free NVIDIA models | 100% | Zero cost        |
+| Profile          | Strategy              | Savings | Best For         |
+| ---------------- | --------------------- | ------- | ---------------- |
+| `/model auto`    | Balanced (default)    | 74-100% | General use      |
+| `/model eco`     | Cheapest possible     | 95-100% | Maximum savings  |
+| `/model premium` | Best quality          | 0%      | Mission-critical |
+| `/model free`    | 11 free NVIDIA models | 100%    | Zero cost        |
 
 **Shortcuts:** `/model grok`, `/model br-sonnet`, `/model gpt5`, `/model o3`
 
@@ -110,12 +110,12 @@ Choose your routing strategy with `/model <profile>`:
 Request → Weighted Scorer (15 dimensions) → Tier → Best Model → Response
 ```
 
-| Tier      | ECO Model                              | AUTO Model                            | PREMIUM Model                |
-| --------- | -------------------------------------- | ------------------------------------- | ---------------------------- |
-| SIMPLE    | nvidia/gpt-oss-120b (**FREE**)         | gemini-2.5-flash ($0.30/$2.50)        | kimi-k2.5                    |
-| MEDIUM    | nvidia/deepseek-v3.2 (**FREE**)        | kimi-k2.5 ($0.60/$3.00)              | gpt-5.3-codex ($1.75/$14.00) |
-| COMPLEX   | nvidia/nemotron-ultra-253b (**FREE**)  | gemini-3.1-pro ($2/$12)               | claude-opus-4.6 ($5/$25)     |
-| REASONING | grok-4-1-fast ($0.20/$0.50)            | grok-4-1-fast-reasoning ($0.20/$0.50) | claude-sonnet-4.6 ($3/$15)   |
+| Tier      | ECO Model                             | AUTO Model                            | PREMIUM Model                |
+| --------- | ------------------------------------- | ------------------------------------- | ---------------------------- |
+| SIMPLE    | nvidia/gpt-oss-120b (**FREE**)        | gemini-2.5-flash ($0.30/$2.50)        | kimi-k2.5                    |
+| MEDIUM    | nvidia/deepseek-v3.2 (**FREE**)       | kimi-k2.5 ($0.60/$3.00)               | gpt-5.3-codex ($1.75/$14.00) |
+| COMPLEX   | nvidia/nemotron-ultra-253b (**FREE**) | gemini-3.1-pro ($2/$12)               | claude-opus-4.6 ($5/$25)     |
+| REASONING | grok-4-1-fast ($0.20/$0.50)           | grok-4-1-fast-reasoning ($0.20/$0.50) | claude-sonnet-4.6 ($3/$15)   |
 
 **Blended average: $2.05/M** vs $25/M for Claude Opus = **92% savings**
 
