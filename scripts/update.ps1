@@ -113,11 +113,17 @@ $tmpDir = Join-Path $env:TEMP "clawrouter-install-$(Get-Random)"
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
 
 try {
-    # npm writes notices to stderr — use SilentlyContinue so PS doesn't treat them as errors
-    $prev = $ErrorActionPreference
-    $ErrorActionPreference = 'SilentlyContinue'
-    $null = npm pack "@blockrun/clawrouter@$LATEST_VERSION" --pack-destination $tmpDir --prefer-online 2>&1
-    $ErrorActionPreference = $prev
+    # Use Start-Process to fully isolate npm's stderr from PowerShell's error stream
+    $packLog = Join-Path $env:TEMP "clawrouter-pack.log"
+    $packErr = "$packLog.err"
+    $packProc = Start-Process -FilePath "npm" `
+        -ArgumentList "pack","@blockrun/clawrouter@$LATEST_VERSION","--pack-destination",$tmpDir,"--prefer-online" `
+        -RedirectStandardOutput $packLog -RedirectStandardError $packErr `
+        -Wait -PassThru -NoNewWindow
+    if ($packProc.ExitCode -ne 0) {
+        $errText = Get-Content $packErr -ErrorAction SilentlyContinue | Select-Object -Last 10
+        throw "npm pack failed (exit $($packProc.ExitCode)): $errText"
+    }
 
     $tarball = Get-ChildItem "$tmpDir\*.tgz" | Select-Object -First 1
     if (-not $tarball) { throw "npm pack produced no tarball in $tmpDir" }
