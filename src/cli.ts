@@ -450,6 +450,8 @@ async function main(): Promise<void> {
     console.log(`[ClawRouter] Generated new wallet: ${wallet.address}`);
   } else if (wallet.source === "saved") {
     console.log(`[ClawRouter] Using saved wallet: ${wallet.address}`);
+  } else if (wallet.source === "config") {
+    console.log(`[ClawRouter] Using wallet from plugin config: ${wallet.address}`);
   } else {
     console.log(`[ClawRouter] Using wallet from BLOCKRUN_WALLET_KEY: ${wallet.address}`);
   }

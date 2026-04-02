@@ -1254,6 +1254,8 @@ const plugin: OpenClawPluginDefinition = {
             api.logger.warn(`════════════════════════════════════════════════`);
           } else if (source === "saved") {
             api.logger.info(`Using saved wallet: ${address}`);
+          } else if (source === "config") {
+            api.logger.info(`Using wallet from plugin config: ${address}`);
           } else {
             api.logger.info(`Using wallet from BLOCKRUN_WALLET_KEY: ${address}`);
           }
