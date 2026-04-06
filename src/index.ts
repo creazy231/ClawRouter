@@ -1123,14 +1123,6 @@ const plugin: OpenClawPluginDefinition = {
   version: VERSION,
 
   register(api: OpenClawPluginApi) {
-    // Guard against repeated register() calls within the same process.
-    // OpenClaw v2026.4.5 parallel plugin loading (and 'openclaw onboard') can
-    // invoke register() many times per second. We use process.__clawrouterRegistered
-    // so the flag survives ESM module cache clears but resets on true process restart.
-    const proc = process as NodeJS.Process & { __clawrouterRegistered?: boolean };
-    if (proc.__clawrouterRegistered) return;
-    proc.__clawrouterRegistered = true;
-
     // Check if ClawRouter is disabled via environment variable
     // Usage: CLAWROUTER_DISABLED=true openclaw gateway start
     const isDisabled =
@@ -1150,6 +1142,16 @@ const plugin: OpenClawPluginDefinition = {
       api.registerProvider(blockrunProvider);
       return;
     }
+
+    // Guard against repeated register() calls within the same process.
+    // OpenClaw v2026.4.5 parallel plugin loading (and 'openclaw onboard') can
+    // invoke register() many times per second.
+    // IMPORTANT: guard is placed AFTER the completion-mode short-circuit so that a
+    // completion-mode call (which exits early without registering commands) does NOT
+    // set the flag and block a subsequent full gateway initialization.
+    const proc = process as NodeJS.Process & { __clawrouterRegistered?: boolean };
+    if (proc.__clawrouterRegistered) return;
+    proc.__clawrouterRegistered = true;
 
     // Register BlockRun as a provider (sync — available immediately)
     api.registerProvider(blockrunProvider);

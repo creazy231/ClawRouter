@@ -430,10 +430,42 @@ async function main(): Promise<void> {
   }
 
   if (args.chain) {
-    await savePaymentChain(args.chain);
-    console.log(`[ClawRouter] Payment chain set to: ${args.chain}`);
-    console.log(`[ClawRouter] This persists across restarts.`);
-    console.log(`[ClawRouter] Run: npx @blockrun/clawrouter`);
+    const targetChain = args.chain;
+
+    if (targetChain === "solana") {
+      // Ensure Solana wallet is set up (mnemonic → keypair)
+      const { existsSync } = await import("fs");
+      const { MNEMONIC_FILE, setupSolana } = await import("./auth.js");
+      const { deriveSolanaKeyBytes, getSolanaAddress } = await import("./wallet.js");
+
+      let solanaAddr: string;
+      if (existsSync(MNEMONIC_FILE)) {
+        // Already set up — derive address from existing mnemonic
+        const { readFileSync } = await import("fs");
+        const mnemonic = readFileSync(MNEMONIC_FILE, "utf8").trim();
+        const keyBytes = deriveSolanaKeyBytes(mnemonic);
+        solanaAddr = await getSolanaAddress(keyBytes);
+        console.log(`[ClawRouter] Solana wallet already set up.`);
+      } else {
+        // First time — generate mnemonic + keypair
+        console.log(`[ClawRouter] Setting up Solana wallet...`);
+        const { solanaPrivateKeyBytes } = await setupSolana();
+        solanaAddr = await getSolanaAddress(solanaPrivateKeyBytes);
+        console.log(`[ClawRouter] Solana wallet created.`);
+        console.log(`[ClawRouter] ⚠  Back up your mnemonic: ${MNEMONIC_FILE}`);
+      }
+
+      await savePaymentChain("solana");
+      console.log(`[ClawRouter] Payment chain → Solana`);
+      console.log(`[ClawRouter] Solana address : ${solanaAddr}`);
+      console.log(`[ClawRouter] Fund USDC at   : https://solscan.io/account/${solanaAddr}`);
+    } else {
+      await savePaymentChain("base");
+      console.log(`[ClawRouter] Payment chain → Base (EVM)`);
+    }
+
+    console.log(`[ClawRouter] Restart gateway to apply: systemctl --user restart openclaw-gateway.service`);
+    console.log(`[ClawRouter]   or: openclaw gateway restart`);
     process.exit(0);
   }
 
