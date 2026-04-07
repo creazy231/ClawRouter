@@ -80,7 +80,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { VERSION } from "./version.js";
 import { privateKeyToAccount } from "viem/accounts";
-import { getStats, formatStatsAscii, clearStats } from "./stats.js";
+import { getStats } from "./stats.js";
 import { buildPartnerTools, PARTNER_SERVICES } from "./partners/index.js";
 import { createStatsCommand } from "./commands/stats.js";
 
@@ -1454,6 +1454,93 @@ const plugin: OpenClawPluginDefinition = {
           `Failed to start BlockRun proxy: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
+  },
+
+  /**
+   * Cleanup hook called when plugin is uninstalled via `openclaw plugins uninstall`.
+   * Removes blockrun provider config, plugin entries, model allowlist entries,
+   * and auth profiles from openclaw.json so no residual config causes errors.
+   */
+  deactivate(api: OpenClawPluginApi) {
+    // 1. Stop proxy
+    if (activeProxyHandle) {
+      activeProxyHandle.close().catch(() => {});
+      activeProxyHandle = null;
+    }
+
+    // 2. Clean openclaw.json — remove provider, plugin entries, model allowlist
+    try {
+      const configPath = join(homedir(), ".openclaw", "openclaw.json");
+      if (existsSync(configPath)) {
+        const config = JSON.parse(readTextFileSync(configPath));
+
+        // Remove blockrun provider
+        if (config.models?.providers?.blockrun) {
+          delete config.models.providers.blockrun;
+        }
+
+        // Remove plugin entries (all case variants)
+        for (const key of ["clawrouter", "ClawRouter", "@blockrun/clawrouter"]) {
+          if (config.plugins?.entries?.[key]) delete config.plugins.entries[key];
+          if (config.plugins?.installs?.[key]) delete config.plugins.installs[key];
+        }
+
+        // Remove from plugins.allow
+        if (Array.isArray(config.plugins?.allow)) {
+          config.plugins.allow = config.plugins.allow.filter(
+            (p: string) =>
+              p !== "clawrouter" && p !== "ClawRouter" && p !== "@blockrun/clawrouter",
+          );
+        }
+
+        // Remove blockrun models from allowlist
+        if (config.agents?.defaults?.models) {
+          for (const key of Object.keys(config.agents.defaults.models)) {
+            if (key.startsWith("blockrun/")) delete config.agents.defaults.models[key];
+          }
+        }
+
+        // Reset default model if it's blockrun
+        if (config.agents?.defaults?.model?.primary?.startsWith("blockrun/")) {
+          delete config.agents.defaults.model.primary;
+        }
+
+        // Atomic write
+        const tmpPath = `${configPath}.tmp.${process.pid}`;
+        writeFileSync(tmpPath, JSON.stringify(config, null, 2));
+        renameSync(tmpPath, configPath);
+        api.logger.info("ClawRouter config cleaned up");
+      }
+    } catch (err) {
+      api.logger.warn(
+        `Config cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    // 3. Clean auth profiles
+    try {
+      const agentsDir = join(homedir(), ".openclaw", "agents");
+      if (existsSync(agentsDir)) {
+        for (const entry of readdirSync(agentsDir, { withFileTypes: true })) {
+          if (!entry.isDirectory()) continue;
+          const authPath = join(agentsDir, entry.name, "agent", "auth-profiles.json");
+          if (!existsSync(authPath)) continue;
+          try {
+            const store = JSON.parse(readTextFileSync(authPath));
+            if (store.profiles?.["blockrun:default"]) {
+              delete store.profiles["blockrun:default"];
+              writeFileSync(authPath, JSON.stringify(store, null, 2));
+            }
+          } catch {
+            // Skip corrupt auth files
+          }
+        }
+      }
+    } catch {
+      // Best-effort cleanup
+    }
+
+    api.logger.info("ClawRouter deactivated — restart gateway to complete uninstall");
   },
 };
 

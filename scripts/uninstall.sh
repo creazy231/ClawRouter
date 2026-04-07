@@ -58,21 +58,25 @@ try {
     changed = true;
   }
 
-  // Remove plugin entries
-  if (config.plugins?.entries?.clawrouter) {
-    delete config.plugins.entries.clawrouter;
-    changed = true;
-  }
-  if (config.plugins?.installs?.clawrouter) {
-    delete config.plugins.installs.clawrouter;
-    changed = true;
+  // Remove plugin entries (check all case variants — OpenClaw stores PascalCase)
+  for (const key of ['clawrouter', 'ClawRouter', '@blockrun/clawrouter']) {
+    if (config.plugins?.entries?.[key]) {
+      delete config.plugins.entries[key];
+      console.log('  Removed plugins.entries.' + key);
+      changed = true;
+    }
+    if (config.plugins?.installs?.[key]) {
+      delete config.plugins.installs[key];
+      console.log('  Removed plugins.installs.' + key);
+      changed = true;
+    }
   }
 
   // Remove from plugins.allow
   if (Array.isArray(config.plugins?.allow)) {
     const before = config.plugins.allow.length;
     config.plugins.allow = config.plugins.allow.filter(
-      p => p !== 'clawrouter' && p !== '@blockrun/clawrouter'
+      p => p !== 'clawrouter' && p !== 'ClawRouter' && p !== '@blockrun/clawrouter'
     );
     if (config.plugins.allow.length !== before) {
       console.log('  Removed from plugins.allow');

@@ -108,7 +108,6 @@ const ROUTING_PROFILES = new Set([
   "blockrun/premium",
   "premium",
 ]);
-const FREE_MODEL = "free/gpt-oss-120b"; // Last-resort single free model fallback
 const FREE_MODELS = new Set([
   "free/gpt-oss-120b",
   "free/gpt-oss-20b",
@@ -122,6 +121,15 @@ const FREE_MODELS = new Set([
   "free/glm-4.7",
   "free/llama-4-maverick",
 ]);
+/** Pick the best available free model that isn't excluded. */
+function pickFreeModel(excludeList?: Set<string>): string | undefined {
+  for (const m of FREE_MODELS) {
+    if (!excludeList?.has(m)) return m;
+  }
+  return undefined; // all free models excluded
+}
+// Keep backward-compat constant for places that don't have excludeList in scope
+const FREE_MODEL = "free/gpt-oss-120b";
 /**
  * Map free/xxx model IDs to nvidia/xxx for upstream BlockRun API.
  * The "free/" prefix is a ClawRouter convention for the /model picker;
@@ -3628,12 +3636,13 @@ async function proxyRequest(
       }
 
       if (sufficiency && (sufficiency.info.isEmpty || !sufficiency.sufficient)) {
-        // Wallet is empty or insufficient — fallback to free model
+        // Wallet is empty or insufficient — fallback to best available free model
+        const freeFallback = pickFreeModel(loadExcludeList()) ?? FREE_MODEL;
         const originalModel = modelId;
         console.log(
-          `[ClawRouter] Wallet ${sufficiency.info.isEmpty ? "empty" : "insufficient"} (${sufficiency.info.balanceUSD}), falling back to free model: ${FREE_MODEL} (requested: ${originalModel})`,
+          `[ClawRouter] Wallet ${sufficiency.info.isEmpty ? "empty" : "insufficient"} (${sufficiency.info.balanceUSD}), falling back to free model: ${freeFallback} (requested: ${originalModel})`,
         );
-        modelId = FREE_MODEL;
+        modelId = freeFallback;
         isFreeModel = true; // keep in sync — budget logic gates on !isFreeModel
         // Update the body with new model (map free/ → nvidia/ for upstream)
         const parsed = JSON.parse(body.toString()) as Record<string, unknown>;
@@ -3953,11 +3962,15 @@ async function proxyRequest(
       modelsToTry = modelId ? [modelId] : [];
     }
 
-    // Ensure free model is the last-resort fallback for non-tool requests.
-    // Skip free fallback when tools are present — nvidia/gpt-oss-120b lacks
-    // tool calling support and would produce broken responses for agentic tasks.
-    if (!hasTools && !modelsToTry.includes(FREE_MODEL) && !excludeList.has(FREE_MODEL)) {
-      modelsToTry.push(FREE_MODEL); // last-resort free fallback
+    // Ensure a free model is the last-resort fallback for non-tool requests.
+    // Skip free fallback when tools are present — free models lack tool calling
+    // support and would produce broken responses for agentic tasks.
+    // Picks the best available free model that isn't excluded by the user.
+    if (!hasTools) {
+      const freeFallback = pickFreeModel(excludeList);
+      if (freeFallback && !modelsToTry.includes(freeFallback)) {
+        modelsToTry.push(freeFallback);
+      }
     }
 
     // --- Budget-aware routing (graceful mode) ---
@@ -4140,17 +4153,21 @@ async function proxyRequest(
           ...failedAttempts[failedAttempts.length - 1],
           reason: "payment_error",
         });
-        const freeIdx = modelsToTry.indexOf(FREE_MODEL);
-        if (freeIdx > i + 1) {
-          console.log(`[ClawRouter] Payment error — skipping to free model: ${FREE_MODEL}`);
-          i = freeIdx - 1; // loop will increment to freeIdx
+        // Find a free model already in the chain
+        const freeInChain = modelsToTry.findIndex((m, idx) => idx > i && FREE_MODELS.has(m));
+        if (freeInChain > i + 1) {
+          console.log(`[ClawRouter] Payment error — skipping to free model: ${modelsToTry[freeInChain]}`);
+          i = freeInChain - 1; // loop will increment to freeInChain
           continue;
         }
-        // Free model not in chain — add it and try
-        if (freeIdx === -1) {
-          modelsToTry.push(FREE_MODEL);
-          console.log(`[ClawRouter] Payment error — appending free model: ${FREE_MODEL}`);
-          continue;
+        // No free model in chain — pick best available and append
+        if (freeInChain === -1) {
+          const freeFallback = pickFreeModel(excludeList);
+          if (freeFallback) {
+            modelsToTry.push(freeFallback);
+            console.log(`[ClawRouter] Payment error — appending free model: ${freeFallback}`);
+            continue;
+          }
         }
       }
 
