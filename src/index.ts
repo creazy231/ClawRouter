@@ -82,6 +82,7 @@ import { VERSION } from "./version.js";
 import { privateKeyToAccount } from "viem/accounts";
 import { getStats, formatStatsAscii, clearStats } from "./stats.js";
 import { buildPartnerTools, PARTNER_SERVICES } from "./partners/index.js";
+import { createStatsCommand } from "./commands/stats.js";
 
 /**
  * Install ClawRouter skills into OpenClaw's workspace skills directory.
@@ -673,51 +674,7 @@ async function startProxyInBackground(api: OpenClawPluginApi): Promise<void> {
     });
 }
 
-/**
- * /stats command handler for ClawRouter.
- * Shows usage statistics and cost savings.
- */
-function createStatsCommand(): OpenClawPluginCommandDefinition {
-  return {
-    name: "stats",
-    description: "Show ClawRouter usage statistics and cost savings",
-    acceptsArgs: true,
-    requireAuth: false,
-    handler: async (ctx: PluginCommandContext) => {
-      const arg = ctx.args?.trim().toLowerCase() || "7";
-
-      if (arg === "clear" || arg === "reset") {
-        try {
-          const { deletedFiles } = await clearStats();
-          return {
-            text: `Stats cleared — ${deletedFiles} log file(s) deleted. Fresh start!`,
-          };
-        } catch (err) {
-          return {
-            text: `Failed to clear stats: ${err instanceof Error ? err.message : String(err)}`,
-            isError: true,
-          };
-        }
-      }
-
-      const days = parseInt(arg, 10) || 7;
-
-      try {
-        const stats = await getStats(Math.min(days, 30)); // Cap at 30 days
-        const ascii = formatStatsAscii(stats);
-
-        return {
-          text: ["```", ascii, "```"].join("\n"),
-        };
-      } catch (err) {
-        return {
-          text: `Failed to load stats: ${err instanceof Error ? err.message : String(err)}`,
-          isError: true,
-        };
-      }
-    },
-  };
-}
+// createStatsCommand moved to src/commands/stats.ts
 
 /**
  * /exclude command handler for ClawRouter.
