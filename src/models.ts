@@ -124,8 +124,9 @@ export const MODEL_ALIASES: Record<string, string> = {
   "minimax-m2.5": "minimax/minimax-m2.5",
 
   // Z.AI GLM-5
-  glm: "zai/glm-5",
+  glm: "zai/glm-5.1",
   "glm-5": "zai/glm-5",
+  "glm-5.1": "zai/glm-5.1",
   "glm-5-turbo": "zai/glm-5-turbo",
 
   // Routing profile aliases (common variations)
@@ -900,6 +901,17 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
 
   // Z.AI GLM-5 Models
   {
+    id: "zai/glm-5.1",
+    name: "GLM-5.1",
+    version: "5.1",
+    inputPrice: 1.4,
+    outputPrice: 4.4,
+    contextWindow: 200000,
+    maxOutput: 128000,
+    toolCalling: true,
+    promo: { flatPrice: 0.001, startDate: "2026-04-01", endDate: "2026-04-15" },
+  },
+  {
     id: "zai/glm-5",
     name: "GLM-5",
     version: "5",
@@ -919,6 +931,7 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     contextWindow: 200000,
     maxOutput: 128000,
     toolCalling: true,
+    promo: { flatPrice: 0.001, startDate: "2026-04-01", endDate: "2026-04-15" },
   },
 ];
 

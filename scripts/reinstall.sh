@@ -599,7 +599,7 @@ try {
     'free/nemotron-ultra-253b', 'free/deepseek-v3.2', 'free/mistral-large-3-675b',
     'free/qwen3-coder-480b', 'free/devstral-2-123b', 'free/llama-4-maverick',
     'free/nemotron-3-super-120b', 'free/nemotron-super-49b', 'free/glm-4.7',
-    'zai/glm-5', 'zai/glm-5-turbo'
+    'zai/glm-5.1', 'zai/glm-5', 'zai/glm-5-turbo'
   ];
 
   if (!config.agents) config.agents = {};
