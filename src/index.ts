@@ -1170,23 +1170,21 @@ const plugin: OpenClawPluginDefinition = {
     // Must run before completion short-circuit so skills are available even on first install
     installSkillsToWorkspace(api.logger);
 
-    // Guard against repeated register() calls within the same process.
-    // OpenClaw calls register() multiple times: discovery, activation, and per-session.
-    // All registration (providers, commands, proxy) should only happen once.
-    // Flag is set BEFORE completion mode check so completion calls don't leave
-    // the flag unset for the next non-completion call.
-    const proc = process as NodeJS.Process & { __clawrouterRegistered?: boolean };
-    const alreadyRegistered = !!proc.__clawrouterRegistered;
-    proc.__clawrouterRegistered = true;
+    // Guard against repeated proxy startup within the same process.
+    // OpenClaw calls register() multiple times (discovery, activation, per-session)
+    // AND may load duplicate plugin instances from stale install-stage directories.
+    // Provider/command/tool registration is idempotent — safe to repeat so the
+    // LAST loaded plugin (the correct one) wins.  Only proxy startup must be guarded
+    // to avoid EADDRINUSE.
+    const proc = process as NodeJS.Process & { __clawrouterProxyStarted?: boolean };
+    const proxyAlreadyStarted = !!proc.__clawrouterProxyStarted;
 
     // Skip heavy initialization in completion mode — only completion script is needed
     // Logging to stdout during completion pollutes the script and causes zsh errors
     if (isCompletionMode()) {
-      if (!alreadyRegistered) api.registerProvider(blockrunProvider);
+      api.registerProvider(blockrunProvider);
       return;
     }
-
-    if (alreadyRegistered) return;
 
     // Register BlockRun as a provider (sync — available immediately)
     api.registerProvider(blockrunProvider);
@@ -1347,8 +1345,18 @@ const plugin: OpenClawPluginDefinition = {
     // causing Chandler's "infinite loop" issue where model selection never finishes
     // Note: startProxyInBackground calls resolveOrGenerateWalletKey internally
     //
+    // Guard: only start proxy once per process. When OpenClaw loads duplicate plugin
+    // instances (stale install-stage dirs), each calls register() — provider/command
+    // registration above is idempotent, but proxy startup must happen exactly once.
+    //
     // Port probe: if another process already owns 8402, skip startup to avoid
     // EADDRINUSE during gateway supervisor restarts (short-lived parallel processes).
+    if (proxyAlreadyStarted) {
+      api.logger.info("Proxy already started by earlier register() call — skipping");
+      return;
+    }
+    proc.__clawrouterProxyStarted = true;
+
     const proxyPort = getProxyPort();
     const portProbe = import("node:net").then(
       (net) =>
