@@ -1313,6 +1313,92 @@ function mergeRoutingConfig(overrides?: Partial<RoutingConfig>): RoutingConfig {
 }
 
 /**
+ * Build the `usage.cost` breakdown that ClawRouter injects into responses.
+ * This uses ACTUAL token counts from the upstream usage field (not estimates)
+ * and falls back to gracefully returning undefined when token counts or
+ * routing info aren't available.
+ *
+ * OpenClaw's `session-cost-usage` module reads the standard `{total,input,output}`
+ * fields. The extra fields (`baseline`, `savings_pct`, `model`, `tier`) are
+ * forward-compat metadata for future OpenClaw UI or external analytics.
+ *
+ * Exported for unit tests.
+ */
+export type CostBreakdown = {
+  /** Total cost in USD for this request (server-margin included). */
+  total: number;
+  /** Input-token cost in USD. */
+  input: number;
+  /** Output-token cost in USD. */
+  output: number;
+  /** What the baseline (Opus) would have cost for the same tokens. */
+  baseline: number;
+  /** Savings % vs baseline, integer 0..100. Omitted for `premium` profile. */
+  savings_pct?: number;
+  /** Actual model that answered (mirrors top-level `model` field). */
+  model: string;
+  /** Routing tier (SIMPLE / MEDIUM / COMPLEX / REASONING) if known. */
+  tier?: string;
+};
+
+export function buildCostBreakdown(params: {
+  actualModelUsed: string;
+  routingProfile: "free" | "eco" | "auto" | "premium" | undefined;
+  routingDecision: { tier?: string } | undefined;
+  modelPricing: Map<string, ModelPricing>;
+  inputTokens: number | undefined;
+  outputTokens: number | undefined;
+  tier: string | undefined;
+}): CostBreakdown | undefined {
+  const { actualModelUsed, routingProfile, modelPricing, inputTokens, outputTokens, tier } = params;
+  // We need both token counts to produce meaningful actual-cost numbers.
+  // If upstream didn't send usage (some providers omit it), skip cost injection
+  // rather than publish misleading zero or estimate-based numbers.
+  if (
+    typeof inputTokens !== "number" ||
+    typeof outputTokens !== "number" ||
+    inputTokens < 0 ||
+    outputTokens < 0
+  ) {
+    return undefined;
+  }
+
+  const pricing = modelPricing.get(actualModelUsed);
+  const inputPrice = pricing?.inputPrice ?? 0;
+  const outputPrice = pricing?.outputPrice ?? 0;
+  const input = (inputTokens / 1_000_000) * inputPrice;
+  const output = (outputTokens / 1_000_000) * outputPrice;
+
+  // Use calculateModelCost to get server-margin-adjusted total and baseline
+  // with the same logic as the pre-request estimator. This keeps total and
+  // baseline internally consistent (same margin, same min-payment floor).
+  const costs = calculateModelCost(
+    actualModelUsed,
+    modelPricing,
+    inputTokens,
+    outputTokens,
+    routingProfile,
+  );
+
+  const total = costs.costEstimate;
+  const baseline = costs.baselineCost;
+  const savingsPct =
+    routingProfile === "premium" || baseline <= 0
+      ? undefined
+      : Math.max(0, Math.min(100, Math.round(costs.savings * 100)));
+
+  return {
+    total,
+    input,
+    output,
+    baseline,
+    ...(savingsPct !== undefined ? { savings_pct: savingsPct } : {}),
+    model: actualModelUsed,
+    ...(tier ? { tier } : {}),
+  };
+}
+
+/**
  * Estimate USDC cost for a request based on model pricing.
  * Returns amount string in USDC smallest unit (6 decimals) or undefined if unknown.
  */
@@ -2675,6 +2761,7 @@ async function proxyRequest(
   let modelId = "";
   let maxTokens = 4096;
   let routingProfile: "eco" | "auto" | "premium" | null = null;
+  let stickyExplicitModel: string | undefined;
   let balanceFallbackNotice: string | undefined;
   let budgetDowngradeNotice: string | undefined;
   let budgetDowngradeHeaderMode: "downgraded" | undefined;
@@ -3441,6 +3528,7 @@ async function proxyRequest(
             // tier-rank logic could downgrade or escalate away from the
             // user's choice.
             if (existingSession.userExplicit) {
+              stickyExplicitModel = existingSession.model;
               console.log(
                 `[ClawRouter] Session ${effectiveSessionId?.slice(0, 8)}... user-explicit pin: ${existingSession.model} (overriding auto-routed ${routingDecision.tier} → ${routingDecision.model})`,
               );
@@ -3453,7 +3541,6 @@ async function proxyRequest(
                 model: existingSession.model,
                 tier: existingSession.tier as Tier,
               };
-              options.onRouted?.(routingDecision);
               // Skip the rest of the existingSession branches; explicit pin wins.
             } else {
               // Never downgrade: only upgrade the session when the current request needs a higher
@@ -3990,6 +4077,10 @@ async function proxyRequest(
         `[ClawRouter] Wallet empty — skipping routing chain, using free model: ${freeFallback}`,
       );
     } else if (routingDecision) {
+      const prependStickyExplicitModel = (chain: string[]): string[] => {
+        if (!stickyExplicitModel) return chain;
+        return [stickyExplicitModel, ...chain.filter((model) => model !== stickyExplicitModel)];
+      };
       // Estimate total context: input tokens (~4 chars per token) + max output tokens
       const estimatedInputTokens = Math.ceil(body.length / 4);
       const estimatedTotalTokens = estimatedInputTokens + maxTokens;
@@ -3998,12 +4089,16 @@ async function proxyRequest(
       const tierConfigs = routingDecision.tierConfigs ?? routerOpts.config.tiers;
 
       // Get full chain first, then filter by context
-      const fullChain = getFallbackChain(routingDecision.tier, tierConfigs);
-      const contextFiltered = getFallbackChainFiltered(
-        routingDecision.tier,
-        tierConfigs,
-        estimatedTotalTokens,
-        getModelContextWindow,
+      const fullChain = prependStickyExplicitModel(
+        getFallbackChain(routingDecision.tier, tierConfigs),
+      );
+      const contextFiltered = prependStickyExplicitModel(
+        getFallbackChainFiltered(
+          routingDecision.tier,
+          tierConfigs,
+          estimatedTotalTokens,
+          getModelContextWindow,
+        ),
       );
 
       // Log if models were filtered out due to context limits
@@ -4015,7 +4110,9 @@ async function proxyRequest(
       }
 
       // Filter out user-excluded models
-      const excludeFiltered = filterByExcludeList(contextFiltered, excludeList);
+      const excludeFiltered = prependStickyExplicitModel(
+        filterByExcludeList(contextFiltered, excludeList),
+      );
       const excludeExcluded = contextFiltered.filter((m) => !excludeFiltered.includes(m));
       if (excludeExcluded.length > 0) {
         console.log(
@@ -4026,7 +4123,9 @@ async function proxyRequest(
       // Filter to models that support tool calling when request has tools.
       // Prevents models like grok-code-fast-1 from outputting tool invocations
       // as plain text JSON (the "talking to itself" bug).
-      let toolFiltered = filterByToolCalling(excludeFiltered, hasTools, supportsToolCalling);
+      let toolFiltered = prependStickyExplicitModel(
+        filterByToolCalling(excludeFiltered, hasTools, supportsToolCalling),
+      );
       const toolExcluded = excludeFiltered.filter((m) => !toolFiltered.includes(m));
       if (toolExcluded.length > 0) {
         console.log(
@@ -4049,12 +4148,14 @@ async function proxyRequest(
           console.log(
             `[ClawRouter] Tool-compliance filter: excluded ${dropped.join(", ")} (unreliable tool schema handling)`,
           );
-          toolFiltered = compliant;
+          toolFiltered = prependStickyExplicitModel(compliant);
         }
       }
 
       // Filter to models that support vision when request has image_url content
-      const visionFiltered = filterByVision(toolFiltered, hasVision, supportsVision);
+      const visionFiltered = prependStickyExplicitModel(
+        filterByVision(toolFiltered, hasVision, supportsVision),
+      );
       const visionExcluded = toolFiltered.filter((m) => !visionFiltered.includes(m));
       if (visionExcluded.length > 0) {
         console.log(
@@ -4063,7 +4164,7 @@ async function proxyRequest(
       }
 
       // Limit to MAX_FALLBACK_ATTEMPTS to prevent infinite loops
-      modelsToTry = visionFiltered.slice(0, MAX_FALLBACK_ATTEMPTS);
+      modelsToTry = prependStickyExplicitModel(visionFiltered).slice(0, MAX_FALLBACK_ATTEMPTS);
 
       // Deprioritize rate-limited models (put them at the end)
       modelsToTry = prioritizeNonRateLimited(modelsToTry);
@@ -4430,10 +4531,17 @@ async function proxyRequest(
       // this conversation starts from the fallback model rather than retrying the
       // primary and falling back again (prevents the "model keeps jumping" issue).
       if (effectiveSessionId) {
-        sessionStore.setSession(effectiveSessionId, actualModelUsed, routingDecision.tier);
-        console.log(
-          `[ClawRouter] Session ${effectiveSessionId.slice(0, 8)}... updated pin to fallback: ${actualModelUsed}`,
-        );
+        const pinnedSession = sessionStore.getSession(effectiveSessionId);
+        if (pinnedSession?.userExplicit) {
+          console.log(
+            `[ClawRouter] Session ${effectiveSessionId.slice(0, 8)}... fallback used ${actualModelUsed}, preserving user-explicit pin: ${pinnedSession.model}`,
+          );
+        } else {
+          sessionStore.setSession(effectiveSessionId, actualModelUsed, routingDecision.tier);
+          console.log(
+            `[ClawRouter] Session ${effectiveSessionId.slice(0, 8)}... updated pin to fallback: ${actualModelUsed}`,
+          );
+        }
       }
     }
 
@@ -4720,7 +4828,44 @@ async function proxyRequest(
         }
       }
 
-      // Send cost summary as SSE comment before terminator
+      // Send a final usage chunk (OpenAI `stream_options.include_usage` format)
+      // carrying both the standard token counts AND the ClawRouter cost breakdown.
+      // OpenClaw's session-cost-usage module reads `usage.cost.{total,input,output}`
+      // from every assistant message, so emitting the cost here feeds both the
+      // per-session footer (/usage full) and the /stats-style reports.
+      if (typeof responseInputTokens === "number" && typeof responseOutputTokens === "number") {
+        const usagePayload: Record<string, unknown> = {
+          prompt_tokens: responseInputTokens,
+          completion_tokens: responseOutputTokens,
+          total_tokens: responseInputTokens + responseOutputTokens,
+        };
+        const costBreakdown = buildCostBreakdown({
+          actualModelUsed,
+          routingProfile: routingProfile ?? undefined,
+          routingDecision,
+          modelPricing: routerOpts.modelPricing,
+          inputTokens: responseInputTokens,
+          outputTokens: responseOutputTokens,
+          tier: routingDecision?.tier,
+        });
+        if (costBreakdown) {
+          usagePayload.cost = costBreakdown;
+        }
+        const usageChunk = {
+          id: `chatcmpl-${Date.now()}`,
+          object: "chat.completion.chunk",
+          created: Math.floor(Date.now() / 1000),
+          model: actualModelUsed || "unknown",
+          system_fingerprint: null,
+          choices: [],
+          usage: usagePayload,
+        };
+        const usageData = `data: ${JSON.stringify(usageChunk)}\n\n`;
+        safeWrite(res, usageData);
+        responseChunks.push(Buffer.from(usageData));
+      }
+
+      // Send cost summary as SSE comment before terminator (human-readable log)
       if (routingDecision) {
         const costComment = `: cost=$${routingDecision.costEstimate.toFixed(4)} savings=${(routingDecision.savings * 100).toFixed(0)}% model=${actualModelUsed} tier=${routingDecision.tier}\n\n`;
         safeWrite(res, costComment);
@@ -4834,16 +4979,39 @@ async function proxyRequest(
         budgetDowngradeNotice = undefined;
       }
 
-      // Inject actualModelUsed into non-streaming response model field
+      // Inject actualModelUsed + per-call cost breakdown into non-streaming response.
+      // - `model` is overwritten unconditionally (some upstreams omit it) so OpenAI
+      //   clients see the resolved model, not the routing profile.
+      // - `usage.cost` follows OpenClaw's convention (session-cost-usage module reads
+      //   `usage.cost.{total,input,output}`). Extra fields (baseline, savings_pct,
+      //   model, tier) are forward-compat metadata ignored by current OpenClaw.
       if (actualModelUsed && responseBody.length > 0) {
         try {
-          const parsed = JSON.parse(responseBody.toString()) as { model?: string };
-          if (parsed.model !== undefined) {
-            parsed.model = actualModelUsed;
-            responseBody = Buffer.from(JSON.stringify(parsed));
+          const parsed = JSON.parse(responseBody.toString()) as {
+            model?: string;
+            usage?: Record<string, unknown>;
+          };
+          parsed.model = actualModelUsed;
+
+          const costBreakdown = buildCostBreakdown({
+            actualModelUsed,
+            routingProfile: routingProfile ?? undefined,
+            routingDecision,
+            modelPricing: routerOpts.modelPricing,
+            inputTokens: responseInputTokens,
+            outputTokens: responseOutputTokens,
+            tier: routingDecision?.tier,
+          });
+          if (costBreakdown) {
+            if (!parsed.usage || typeof parsed.usage !== "object") {
+              parsed.usage = {};
+            }
+            (parsed.usage as Record<string, unknown>).cost = costBreakdown;
           }
+
+          responseBody = Buffer.from(JSON.stringify(parsed));
         } catch {
-          /* not JSON, skip model injection */
+          /* not JSON, skip model/cost injection */
         }
       }
 
