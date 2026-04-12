@@ -609,10 +609,15 @@ function injectAuthProfile(logger: { info: (msg: string) => void }): void {
 
 // Store active proxy handle for cleanup on gateway_stop
 let activeProxyHandle: Awaited<ReturnType<typeof startProxy>> | null = null;
+let pendingConfiguredStartupApi: OpenClawPluginApi | null = null;
 type ProcessWithClawRouterState = NodeJS.Process & {
   __clawrouterProxyStarted?: boolean;
   __clawrouterDeferredStartTimer?: ReturnType<typeof setTimeout>;
   __clawrouterStartupGeneration?: number;
+  __clawrouterStartedWithEmptyConfig?: boolean;
+  __clawrouterStartupPhase?: "idle" | "probing" | "starting" | "running";
+  /** Suppress verbose registration logs on repeat register() calls. */
+  __clawrouterRegistrationLogged?: boolean;
 };
 
 function clearDeferredProxyStartTimer(
@@ -626,10 +631,13 @@ function clearDeferredProxyStartTimer(
 
 function beginProxyStartupAttempt(
   proc: ProcessWithClawRouterState = process as ProcessWithClawRouterState,
+  startedWithEmptyConfig = false,
 ): number {
   const generation = (proc.__clawrouterStartupGeneration ?? 0) + 1;
   proc.__clawrouterStartupGeneration = generation;
   proc.__clawrouterProxyStarted = true;
+  proc.__clawrouterStartedWithEmptyConfig = startedWithEmptyConfig;
+  proc.__clawrouterStartupPhase = "probing";
   return generation;
 }
 
@@ -645,9 +653,69 @@ function isProxyStartupCurrent(
 function resetProxyStartupState(): void {
   const proc = process as ProcessWithClawRouterState;
   clearDeferredProxyStartTimer(proc);
+  pendingConfiguredStartupApi = null;
   proc.__clawrouterStartupGeneration = (proc.__clawrouterStartupGeneration ?? 0) + 1;
   proc.__clawrouterProxyStarted = false;
+  proc.__clawrouterStartedWithEmptyConfig = false;
+  proc.__clawrouterStartupPhase = "idle";
   setActiveProxy(null);
+}
+
+function startPendingConfiguredProxyIfQueued(
+  proc: ProcessWithClawRouterState = process as ProcessWithClawRouterState,
+): boolean {
+  if (!pendingConfiguredStartupApi) return false;
+  if (proc.__clawrouterProxyStarted || activeProxyHandle) {
+    pendingConfiguredStartupApi = null;
+    return false;
+  }
+  const api = pendingConfiguredStartupApi;
+  pendingConfiguredStartupApi = null;
+  const generation = beginProxyStartupAttempt(proc, false);
+  api.logger.info("Starting proxy with populated pluginConfig");
+  startProxyAfterPortProbe(api, generation);
+  return true;
+}
+
+function resumePendingConfiguredProxyAfterStaleFailure(
+  proc: ProcessWithClawRouterState = process as ProcessWithClawRouterState,
+): boolean {
+  if (!pendingConfiguredStartupApi) return false;
+  if (proc.__clawrouterProxyStarted || activeProxyHandle) return false;
+  proc.__clawrouterStartupPhase = "idle";
+  return startPendingConfiguredProxyIfQueued(proc);
+}
+
+function supersedeEmptyConfigStartup(api: OpenClawPluginApi): void {
+  const proc = process as ProcessWithClawRouterState;
+  pendingConfiguredStartupApi = api;
+  proc.__clawrouterStartupGeneration = (proc.__clawrouterStartupGeneration ?? 0) + 1;
+  proc.__clawrouterProxyStarted = false;
+  proc.__clawrouterStartedWithEmptyConfig = false;
+
+  if (activeProxyHandle) {
+    const oldHandle = activeProxyHandle;
+    activeProxyHandle = null;
+    setActiveProxy(null);
+    proc.__clawrouterStartupPhase = "idle";
+    void oldHandle
+      .close()
+      .catch(() => {})
+      .finally(() => {
+        startPendingConfiguredProxyIfQueued(proc);
+      });
+    return;
+  }
+
+  if (proc.__clawrouterStartupPhase === "starting") {
+    api.logger.info(
+      "Populated pluginConfig arrived during provisional startup — queued restart with current config",
+    );
+    return;
+  }
+
+  proc.__clawrouterStartupPhase = "idle";
+  startPendingConfiguredProxyIfQueued(proc);
 }
 
 /**
@@ -659,6 +727,11 @@ async function startProxyInBackground(
   api: OpenClawPluginApi,
   startupGeneration?: number,
 ): Promise<boolean> {
+  const proc = process as ProcessWithClawRouterState;
+  if (startupGeneration !== undefined && isProxyStartupCurrent(startupGeneration, proc)) {
+    proc.__clawrouterStartupPhase = "starting";
+  }
+
   // Resolve wallet key: plugin config → saved file → env var → auto-generate.
   // pluginConfig.walletKey is declared in openclaw.plugin.json configSchema but
   // was previously never read here — that was a bug.
@@ -744,11 +817,14 @@ async function startProxyInBackground(
     } catch {
       // Best-effort cleanup for stale startup attempts
     }
+    proc.__clawrouterStartupPhase = "idle";
+    startPendingConfiguredProxyIfQueued(proc);
     return false;
   }
 
   setActiveProxy(proxy);
   activeProxyHandle = proxy;
+  proc.__clawrouterStartupPhase = "running";
 
   const startupExclusions = loadExcludeList();
   if (startupExclusions.size > 0) {
@@ -850,6 +926,8 @@ function startProxyAfterPortProbe(api: OpenClawPluginApi, startupGeneration: num
     .catch((err) => {
       if (isProxyStartupCurrent(startupGeneration)) {
         resetProxyStartupState();
+      } else {
+        resumePendingConfiguredProxyAfterStaleFailure();
       }
       api.logger.error(
         `Failed to start BlockRun proxy: ${err instanceof Error ? err.message : String(err)}`,
@@ -1436,18 +1514,30 @@ const plugin: OpenClawPluginDefinition = {
       blockrunMcpServer.definition,
     );
 
-    api.logger.info("BlockRun provider registered (55+ models via x402)");
-    if (typeof api.registerWebSearchProvider === "function") {
-      api.logger.info(`Registered BlockRun web_search provider (${BLOCKRUN_EXA_PROVIDER_ID})`);
-    }
-    if (runtimeMcpResult.status === "added" || runtimeMcpResult.status === "updated") {
-      api.logger.info(
-        blockrunMcpServer.source === "local"
-          ? `Configured BlockRun MCP server (${BLOCKRUN_MCP_SERVER_NAME}) from local blockrun-mcp build`
-          : `Configured BlockRun MCP server (${BLOCKRUN_MCP_SERVER_NAME}) via npx @blockrun/mcp@latest`,
-      );
-    } else if (runtimeMcpResult.status === "preserved") {
-      api.logger.info(`Preserved custom BlockRun MCP server config (${BLOCKRUN_MCP_SERVER_NAME})`);
+    // Only log provider/tool registration on the first register() call.
+    // OpenClaw calls register() 4+ times per gateway startup; logging every
+    // time produces 24+ identical lines that obscure useful output.
+    // Registration itself is idempotent (last wins), so always runs — just
+    // the log is suppressed on repeat calls.
+    const shouldLogRegistration = !proc.__clawrouterRegistrationLogged;
+    proc.__clawrouterRegistrationLogged = true;
+
+    if (shouldLogRegistration) {
+      api.logger.info("BlockRun provider registered (55+ models via x402)");
+      if (typeof api.registerWebSearchProvider === "function") {
+        api.logger.info(`Registered BlockRun web_search provider (${BLOCKRUN_EXA_PROVIDER_ID})`);
+      }
+      if (runtimeMcpResult.status === "added" || runtimeMcpResult.status === "updated") {
+        api.logger.info(
+          blockrunMcpServer.source === "local"
+            ? `Configured BlockRun MCP server (${BLOCKRUN_MCP_SERVER_NAME}) from local blockrun-mcp build`
+            : `Configured BlockRun MCP server (${BLOCKRUN_MCP_SERVER_NAME}) via npx @blockrun/mcp@latest`,
+        );
+      } else if (runtimeMcpResult.status === "preserved") {
+        api.logger.info(
+          `Preserved custom BlockRun MCP server config (${BLOCKRUN_MCP_SERVER_NAME})`,
+        );
+      }
     }
 
     // Register partner API tools (Twitter/X lookup, etc.)
@@ -1457,7 +1547,7 @@ const plugin: OpenClawPluginDefinition = {
       for (const tool of partnerTools) {
         api.registerTool(tool);
       }
-      if (partnerTools.length > 0) {
+      if (partnerTools.length > 0 && shouldLogRegistration) {
         api.logger.info(
           `Registered ${partnerTools.length} partner tool(s): ${partnerTools.map((t) => t.name).join(", ")}`,
         );
@@ -1513,7 +1603,9 @@ const plugin: OpenClawPluginDefinition = {
     }
     api.registerCommand(createStatsCommand());
     api.registerCommand(createExcludeCommand());
-    api.logger.info("Commands registered: /wallet, /blockrun, /stats, /exclude");
+    if (shouldLogRegistration) {
+      api.logger.info("Commands registered: /wallet, /blockrun, /stats, /exclude");
+    }
 
     // Register a service with stop() for cleanup on gateway shutdown
     // This prevents EADDRINUSE when the gateway restarts
@@ -1600,15 +1692,22 @@ const plugin: OpenClawPluginDefinition = {
       typeof api.pluginConfig !== "object" ||
       Object.keys(api.pluginConfig).length === 0;
 
-    if (proxyAlreadyStarted) {
-      api.logger.info("Proxy already started by earlier register() call — skipping");
-      return;
-    }
-
     // If we have a pending deferred start from a prior call, cancel it — this
     // call (with potentially populated pluginConfig) takes over.
     if (clearDeferredProxyStartTimer(proc)) {
       api.logger.info("Superseding earlier deferred proxy start — using current pluginConfig");
+    }
+
+    if (proxyAlreadyStarted) {
+      if (!pluginConfigEmpty && proc.__clawrouterStartedWithEmptyConfig) {
+        api.logger.info(
+          "Populated pluginConfig arrived after provisional default startup — switching proxy to current config",
+        );
+        supersedeEmptyConfigStartup(api);
+      } else {
+        api.logger.info("Proxy already started by earlier register() call — skipping");
+      }
+      return;
     }
 
     if (pluginConfigEmpty) {
@@ -1620,14 +1719,19 @@ const plugin: OpenClawPluginDefinition = {
       proc.__clawrouterDeferredStartTimer = setTimeout(() => {
         proc.__clawrouterDeferredStartTimer = undefined;
         if (proc.__clawrouterProxyStarted) return;
-        const startupGeneration = beginProxyStartupAttempt(proc);
+        const startupGeneration = beginProxyStartupAttempt(proc, true);
         api.logger.info("Deferred timer fired — starting proxy with default config");
         startProxyAfterPortProbe(api, startupGeneration);
       }, 250);
       return;
     }
 
-    const startupGeneration = beginProxyStartupAttempt(proc);
+    if (pendingConfiguredStartupApi) {
+      pendingConfiguredStartupApi = null;
+      api.logger.info("Discarding older queued populated pluginConfig — using newest config");
+    }
+
+    const startupGeneration = beginProxyStartupAttempt(proc, false);
     startProxyAfterPortProbe(api, startupGeneration);
   },
 
