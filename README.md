@@ -87,7 +87,7 @@ Done. Smart routing (`blockrun/auto`) is now your default model.
 
 ### Option B — Standalone (continue.dev, Cursor, VS Code, any OpenAI-compatible client)
 
-> **Using Claude Code?** Check out [BRCC](https://github.com/BlockRunAI/brcc) — it's purpose-built for Claude Code with the same smart routing and x402 payments.
+> **Using Claude Code?** Check out [BRCC](https://blockrun.ai/brcc.md) — it's purpose-built for Claude Code with the same smart routing and x402 payments.
 
 No OpenClaw required. XClawRouter runs as a local proxy on port 8402.
 
@@ -207,13 +207,32 @@ Generate images directly from chat with `/imagegen`:
 /imagegen --model banana-pro --size 2048x2048 mountain landscape
 ```
 
-| Model         | Provider              | Price       | Max Size  |
-| ------------- | --------------------- | ----------- | --------- |
-| `nano-banana` | Google Gemini Flash   | $0.05/image | 1024x1024 |
-| `banana-pro`  | Google Gemini Pro     | $0.10/image | 4096x4096 |
-| `dall-e-3`    | OpenAI DALL-E 3       | $0.04/image | 1792x1024 |
-| `gpt-image`   | OpenAI GPT Image 1    | $0.02/image | 1536x1024 |
-| `flux`        | Black Forest Flux 1.1 | $0.04/image | 1024x1024 |
+| Model                       | Provider              | Price       | Max Size  |
+| --------------------------- | --------------------- | ----------- | --------- |
+| `nano-banana`               | Google Gemini Flash   | $0.05/image | 1024x1024 |
+| `banana-pro`                | Google Gemini Pro     | $0.10/image | 4096x4096 |
+| `dall-e-3`                  | OpenAI DALL-E 3       | $0.04/image | 1792x1024 |
+| `gpt-image`                 | OpenAI GPT Image 1    | $0.02/image | 1536x1024 |
+| `flux`                      | Black Forest Flux 1.1 | $0.04/image | 1024x1024 |
+| `xai/grok-imagine-image`    | xAI Grok Imagine      | $0.02/image | 1024x1024 |
+| `xai/grok-imagine-image-pro`| xAI Grok Imagine Pro  | $0.07/image | 1024x1024 |
+| `zai/cogview-4`             | Zhipu CogView-4       | $0.015/image| 1440x1440 |
+
+## Video Generation
+
+Generate short AI videos via `POST http://localhost:8402/v1/videos/generations`. ClawRouter proxies the BlockRun gateway, handles x402 payment, and downloads the returned MP4 to local disk — the response `url` points to `http://localhost:8402/videos/<file>.mp4` so the asset survives past xAI's temporary bucket.
+
+```bash
+curl -X POST http://localhost:8402/v1/videos/generations \
+  -H "Content-Type: application/json" \
+  -d '{"model":"xai/grok-imagine-video","prompt":"a red apple slowly spinning"}'
+```
+
+| Model                    | Provider         | Price      | Duration  |
+| ------------------------ | ---------------- | ---------- | --------- |
+| `xai/grok-imagine-video` | xAI Grok Imagine | $0.05/sec  | 8s default |
+
+Calls block for 30–120s while xAI polls the job. Text-to-video and image-to-video (`image_url` parameter) are both supported.
 
 ## Image Editing (img2img)
 
@@ -487,15 +506,13 @@ You're here. 55+ models, local smart routing, x402 USDC payments — the only st
 </td>
 <td width="50%">
 
-### 🤖 [BRCC](https://github.com/BlockRunAI/brcc)
+### 🤖 [BRCC](https://blockrun.ai/brcc.md)
 
 **BlockRun for Claude Code**
 
 Run Claude Code with 50+ models, no rate limits, no Anthropic account, no phone verification. Pay per request with USDC — your wallet is your identity.
 
 `curl -fsSL https://blockrun.ai/brcc-install | bash`
-
-[![GitHub](https://img.shields.io/github/stars/BlockRunAI/brcc?style=flat-square)](https://github.com/BlockRunAI/brcc)
 
 </td>
 </tr>
