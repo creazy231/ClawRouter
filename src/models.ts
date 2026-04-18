@@ -104,6 +104,7 @@ export const MODEL_ALIASES: Record<string, string> = {
   "nvidia/mistral-large-3-675b": "free/mistral-small-4-119b", // retired 2026-04-21
   "nvidia/qwen3-coder-480b": "free/qwen3-coder-480b",
   "nvidia/devstral-2-123b": "free/qwen3-coder-480b", // retired 2026-04-21
+  "qwen/qwen3-coder-480b-a35b-instruct": "free/qwen3-coder-480b",
   "nvidia/glm-4.7": "free/glm-4.7",
   "nvidia/llama-4-maverick": "free/llama-4-maverick",
   "nvidia/qwen3-next-80b-a3b-thinking": "free/qwen3-next-80b-a3b-thinking",
@@ -783,6 +784,40 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     contextWindow: 131072,
     maxOutput: 16384,
     vision: true,
+    toolCalling: true,
+  },
+
+  // xAI Grok 4.20 Family (hidden in picker; explicit-only — mirrors BlockRun hidden:true)
+  {
+    id: "xai/grok-4.20-reasoning",
+    name: "Grok 4.20 Reasoning",
+    version: "4.20",
+    inputPrice: 2.0,
+    outputPrice: 6.0,
+    contextWindow: 2000000,
+    maxOutput: 16384,
+    reasoning: true,
+    toolCalling: true,
+  },
+  {
+    id: "xai/grok-4.20-non-reasoning",
+    name: "Grok 4.20",
+    version: "4.20",
+    inputPrice: 2.0,
+    outputPrice: 6.0,
+    contextWindow: 2000000,
+    maxOutput: 16384,
+    toolCalling: true,
+  },
+  {
+    id: "xai/grok-4.20-multi-agent",
+    name: "Grok 4.20 Multi-Agent",
+    version: "4.20",
+    inputPrice: 2.0,
+    outputPrice: 6.0,
+    contextWindow: 2000000,
+    maxOutput: 16384,
+    reasoning: true,
     toolCalling: true,
   },
 
