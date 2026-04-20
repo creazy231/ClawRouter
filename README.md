@@ -18,8 +18,8 @@ Agents can only sign transactions.<br><br>
 
 [![npm version](https://img.shields.io/npm/v/@blockrun/clawrouter.svg?style=flat-square&color=cb3837)](https://npmjs.com/package/@blockrun/clawrouter)
 [![npm downloads](https://img.shields.io/npm/dm/@blockrun/clawrouter.svg?style=flat-square&color=blue)](https://npmjs.com/package/@blockrun/clawrouter)
-[![GitLab](https://img.shields.io/gitlab/stars/blockrunai/clawrouter?style=flat-square&gitlab_url=https%3A%2F%2Fgitlab.com&label=GitLab%20stars)](https://gitlab.com/blockrunai/clawrouter)
-[![pipeline status](https://img.shields.io/gitlab/pipeline-status/blockrunai%2Fclawrouter?branch=main&style=flat-square&label=CI)](https://gitlab.com/blockrunai/clawrouter/-/pipelines)
+[![GitHub stars](https://img.shields.io/github/stars/BlockRunAI/ClawRouter?style=flat-square&label=GitHub%20stars)](https://github.com/BlockRunAI/ClawRouter)
+[![CI](https://img.shields.io/github/actions/workflow/status/BlockRunAI/ClawRouter/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/BlockRunAI/ClawRouter/actions)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
@@ -207,16 +207,16 @@ Generate images directly from chat with `/imagegen`:
 /imagegen --model banana-pro --size 2048x2048 mountain landscape
 ```
 
-| Model                       | Provider              | Price       | Max Size  |
-| --------------------------- | --------------------- | ----------- | --------- |
-| `nano-banana`               | Google Gemini Flash   | $0.05/image | 1024x1024 |
-| `banana-pro`                | Google Gemini Pro     | $0.10/image | 4096x4096 |
-| `dall-e-3`                  | OpenAI DALL-E 3       | $0.04/image | 1792x1024 |
-| `gpt-image`                 | OpenAI GPT Image 1    | $0.02/image | 1536x1024 |
-| `flux`                      | Black Forest Flux 1.1 | $0.04/image | 1024x1024 |
-| `xai/grok-imagine-image`    | xAI Grok Imagine      | $0.02/image | 1024x1024 |
-| `xai/grok-imagine-image-pro`| xAI Grok Imagine Pro  | $0.07/image | 1024x1024 |
-| `zai/cogview-4`             | Zhipu CogView-4       | $0.015/image| 1440x1440 |
+| Model                        | Provider              | Price        | Max Size  |
+| ---------------------------- | --------------------- | ------------ | --------- |
+| `nano-banana`                | Google Gemini Flash   | $0.05/image  | 1024x1024 |
+| `banana-pro`                 | Google Gemini Pro     | $0.10/image  | 4096x4096 |
+| `dall-e-3`                   | OpenAI DALL-E 3       | $0.04/image  | 1792x1024 |
+| `gpt-image`                  | OpenAI GPT Image 1    | $0.02/image  | 1536x1024 |
+| `flux`                       | Black Forest Flux 1.1 | $0.04/image  | 1024x1024 |
+| `xai/grok-imagine-image`     | xAI Grok Imagine      | $0.02/image  | 1024x1024 |
+| `xai/grok-imagine-image-pro` | xAI Grok Imagine Pro  | $0.07/image  | 1024x1024 |
+| `zai/cogview-4`              | Zhipu CogView-4       | $0.015/image | 1440x1440 |
 
 ## Video Generation
 
@@ -228,9 +228,9 @@ curl -X POST http://localhost:8402/v1/videos/generations \
   -d '{"model":"xai/grok-imagine-video","prompt":"a red apple slowly spinning"}'
 ```
 
-| Model                    | Provider         | Price      | Duration  |
-| ------------------------ | ---------------- | ---------- | --------- |
-| `xai/grok-imagine-video` | xAI Grok Imagine | $0.05/sec  | 8s default |
+| Model                    | Provider         | Price     | Duration   |
+| ------------------------ | ---------------- | --------- | ---------- |
+| `xai/grok-imagine-video` | xAI Grok Imagine | $0.05/sec | 8s default |
 
 Calls block for 30–120s while xAI polls the job. Text-to-video and image-to-video (`image_url` parameter) are both supported.
 
@@ -295,6 +295,7 @@ Edit existing images with `/img2img`:
 | google/gemini-3-flash-preview |     $0.50 |      $3.00 |    $0.0018 | 1M      | vision                            |
 | nvidia/kimi-k2.5              |     $0.55 |      $2.50 |    $0.0015 | 262K    | tools                             |
 | moonshot/kimi-k2.5            |     $0.60 |      $3.00 |    $0.0018 | 262K    | reasoning, vision, agentic, tools |
+| moonshot/kimi-k2.6            |     $0.95 |      $4.00 |    $0.0025 | 262K    | reasoning, vision, agentic, tools |
 
 ### Mid-Range Models ($0.001–$0.01/request)
 
@@ -468,8 +469,8 @@ npx @blockrun/clawrouter doctor opus "深度分析我的配置"
 ## Development
 
 ```bash
-git clone https://gitlab.com/blockrunai/clawrouter.git
-cd clawrouter
+git clone https://github.com/BlockRunAI/ClawRouter.git
+cd ClawRouter
 npm install
 npm run build
 npm test

@@ -576,7 +576,7 @@ try {
     'openai/gpt-5-mini', 'openai/gpt-5-nano', 'openai/gpt-5.4-nano', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/o3', 'openai/o4-mini',
     'google/gemini-3.1-pro', 'google/gemini-3.1-flash-lite', 'google/gemini-3-pro-preview', 'google/gemini-3-flash-preview',
     'google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite',
-    'deepseek/deepseek-chat', 'deepseek/deepseek-reasoner', 'nvidia/kimi-k2.5',
+    'deepseek/deepseek-chat', 'deepseek/deepseek-reasoner', 'moonshot/kimi-k2.6', 'nvidia/kimi-k2.5',
     'xai/grok-3', 'xai/grok-4-0709', 'xai/grok-4-1-fast-reasoning',
     'minimax/minimax-m2.7', 'minimax/minimax-m2.5',
     'free/gpt-oss-120b', 'free/gpt-oss-20b',

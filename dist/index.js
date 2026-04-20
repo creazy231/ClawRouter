@@ -57780,11 +57780,12 @@ var MODEL_ALIASES = {
   deepseek: "deepseek/deepseek-chat",
   "deepseek-chat": "deepseek/deepseek-chat",
   reasoner: "deepseek/deepseek-reasoner",
-  // Kimi / Moonshot — nvidia-hosted is more reliable than moonshot direct API
+  // Kimi / Moonshot — K2.6 is Moonshot's flagship (only via Moonshot API). K2.5 stays nvidia-hosted for reliability.
   kimi: "nvidia/kimi-k2.5",
   moonshot: "nvidia/kimi-k2.5",
   "kimi-k2.5": "nvidia/kimi-k2.5",
   "moonshot/kimi-k2.5": "nvidia/kimi-k2.5",
+  "kimi-k2.6": "moonshot/kimi-k2.6",
   // Google
   gemini: "google/gemini-2.5-pro",
   flash: "google/gemini-2.5-flash",
@@ -58295,6 +58296,20 @@ var BLOCKRUN_MODELS = [
     contextWindow: 128e3,
     maxOutput: 8192,
     reasoning: true,
+    toolCalling: true
+  },
+  // Kimi K2.6 — Moonshot's current flagship (256K context, vision + reasoning). Only served via Moonshot direct API.
+  {
+    id: "moonshot/kimi-k2.6",
+    name: "Kimi K2.6",
+    version: "k2.6",
+    inputPrice: 0.95,
+    outputPrice: 4,
+    contextWindow: 262144,
+    maxOutput: 65536,
+    reasoning: true,
+    vision: true,
+    agentic: true,
     toolCalling: true
   },
   // Kimi K2.5 — prefer nvidia-hosted (more reliable); moonshot direct API is unreliable
@@ -74106,9 +74121,11 @@ var DEFAULT_ROUTING_CONFIG = {
   // codex=complex coding, kimi=simple coding, sonnet=reasoning/instructions, opus=architecture/PM/audits
   premiumTiers: {
     SIMPLE: {
-      primary: "nvidia/kimi-k2.5",
-      // $0.60/$3.00 - good for simple coding
+      primary: "moonshot/kimi-k2.6",
+      // $0.95/$4.00 - Moonshot flagship (256K ctx, vision + reasoning)
       fallback: [
+        "nvidia/kimi-k2.5",
+        // $0.60/$3.00 - proven reliable NVIDIA fallback when Moonshot direct API falters
         "google/gemini-2.5-flash",
         // 60% retention, fast growth
         "anthropic/claude-haiku-4.5",
@@ -74120,6 +74137,8 @@ var DEFAULT_ROUTING_CONFIG = {
       primary: "openai/gpt-5.3-codex",
       // $1.75/$14 - 400K context, 128K output, replaces 5.2
       fallback: [
+        "moonshot/kimi-k2.6",
+        // Moonshot flagship
         "nvidia/kimi-k2.5",
         "google/gemini-2.5-flash",
         // 60% retention, good coding capability
@@ -74140,6 +74159,8 @@ var DEFAULT_ROUTING_CONFIG = {
         "google/gemini-3.1-pro",
         // Newest Gemini
         "google/gemini-3-pro-preview",
+        "moonshot/kimi-k2.6",
+        // Moonshot flagship
         "nvidia/kimi-k2.5"
       ]
     },
@@ -81448,6 +81469,7 @@ function injectModelsConfig(logger) {
     "google/gemini-3.1-pro",
     "google/gemini-3-flash-preview",
     "deepseek/deepseek-chat",
+    "moonshot/kimi-k2.6",
     "moonshot/kimi-k2.5",
     "xai/grok-3",
     "minimax/minimax-m2.5",

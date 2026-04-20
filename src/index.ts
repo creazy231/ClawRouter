@@ -387,6 +387,7 @@ function injectModelsConfig(logger: { info: (msg: string) => void }): void {
     "google/gemini-3.1-pro",
     "google/gemini-3-flash-preview",
     "deepseek/deepseek-chat",
+    "moonshot/kimi-k2.6",
     "moonshot/kimi-k2.5",
     "xai/grok-3",
     "minimax/minimax-m2.5",

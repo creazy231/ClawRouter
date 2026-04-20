@@ -38,7 +38,7 @@ Rules handle ~80% of requests in <1ms. Only ambiguous queries hit the LLM classi
 
 ## Available Models
 
-55+ models including: gpt-5.4, gpt-4o, o3, claude-opus-4.6, claude-sonnet-4.6, gemini-3.1-pro, gemini-2.5-flash, deepseek-chat, grok-3, kimi-k2.5, and 11 free NVIDIA models (nemotron-ultra-253b, deepseek-v3.2, mistral-large-675b, qwen3-coder-480b, devstral-2-123b, llama-4-maverick, glm-4.7, gpt-oss-120b, gpt-oss-20b, nemotron-3-super-120b, nemotron-super-49b).
+55+ models including: gpt-5.4, gpt-4o, o3, claude-opus-4.7, claude-opus-4.6, claude-sonnet-4.6, gemini-3.1-pro, gemini-2.5-flash, deepseek-chat, grok-3, kimi-k2.6, kimi-k2.5, and 11 free NVIDIA models (nemotron-ultra-253b, deepseek-v3.2, mistral-large-675b, qwen3-coder-480b, devstral-2-123b, llama-4-maverick, glm-4.7, gpt-oss-120b, gpt-oss-20b, nemotron-3-super-120b, nemotron-super-49b).
 
 ## Example Output
 

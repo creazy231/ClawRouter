@@ -66,11 +66,12 @@ export const MODEL_ALIASES: Record<string, string> = {
   "deepseek-chat": "deepseek/deepseek-chat",
   reasoner: "deepseek/deepseek-reasoner",
 
-  // Kimi / Moonshot — nvidia-hosted is more reliable than moonshot direct API
+  // Kimi / Moonshot — K2.6 is Moonshot's flagship (only via Moonshot API). K2.5 stays nvidia-hosted for reliability.
   kimi: "nvidia/kimi-k2.5",
   moonshot: "nvidia/kimi-k2.5",
   "kimi-k2.5": "nvidia/kimi-k2.5",
   "moonshot/kimi-k2.5": "nvidia/kimi-k2.5",
+  "kimi-k2.6": "moonshot/kimi-k2.6",
 
   // Google
   gemini: "google/gemini-2.5-pro",
@@ -655,6 +656,21 @@ export const BLOCKRUN_MODELS: BlockRunModel[] = [
     contextWindow: 128000,
     maxOutput: 8192,
     reasoning: true,
+    toolCalling: true,
+  },
+
+  // Kimi K2.6 — Moonshot's current flagship (256K context, vision + reasoning). Only served via Moonshot direct API.
+  {
+    id: "moonshot/kimi-k2.6",
+    name: "Kimi K2.6",
+    version: "k2.6",
+    inputPrice: 0.95,
+    outputPrice: 4.0,
+    contextWindow: 262144,
+    maxOutput: 65536,
+    reasoning: true,
+    vision: true,
+    agentic: true,
     toolCalling: true,
   },
 

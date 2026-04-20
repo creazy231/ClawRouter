@@ -4,6 +4,13 @@ All notable changes to ClawRouter.
 
 ---
 
+## v0.12.156 — Apr 20, 2026
+
+- **Kimi K2.6 added** — Moonshot's new flagship (`moonshot/kimi-k2.6`, 256K context, vision + reasoning, $0.95 in / $4.00 out per 1M) registered in `BLOCKRUN_MODELS` with `kimi-k2.6` alias. Added to the curated `/model` picker list (`src/index.ts`, `scripts/update.sh`, `scripts/reinstall.sh`), the README pricing table, `docs/routing-profiles.md`, and the AI-agent-facing model catalog in `skills/clawrouter/SKILL.md`. Premium routing tier (`blockrun/premium`) now uses K2.6 as the SIMPLE primary and as a fallback in MEDIUM/COMPLEX, with `nvidia/kimi-k2.5` retained as the first fallback for reliability. The generic `kimi`/`moonshot` aliases still resolve to `nvidia/kimi-k2.5` (matches BlockRun server's `blockrun/kimi` stance); users opt in to K2.6 explicitly via `kimi-k2.6` or `blockrun/premium`.
+- **GitHub restored as canonical source** — BlockRunAI GitHub org is back. `package.json` `repository.url`, README badges, CONTRIBUTING clone URL, `openclaw.security.json`, all docs (`anthropic-*`, `clawrouter-cuts-*`, `clawrouter-vs-openrouter`, `11-free-ai-models`, `llm-router-benchmark-*`, `smart-llm-router-14-dimension-classifier`, `subscription-failover`, `troubleshooting`), `skills/release/SKILL.md`, and the `sse-error-format` regression-test comment now point at `github.com/BlockRunAI/ClawRouter`. GitLab mirror (`gitlab.com/blockrunai/ClawRouter`) is kept as a secondary remote for redundancy but is no longer advertised. Metadata + docs only; no runtime/code changes.
+
+---
+
 ## v0.12.155 — Apr 18, 2026
 
 - **Docs: video generation endpoint** — README now documents `POST /v1/videos/generations` with `xai/grok-imagine-video` ($0.05/sec, 8s default). The proxy handler, cost estimator (`estimateVideoCost`), and local-file download path were already in place in `proxy.ts`; only the README was missing.
