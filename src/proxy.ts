@@ -112,15 +112,12 @@ const ROUTING_PROFILES = new Set([
 const FREE_MODELS = new Set([
   "free/gpt-oss-120b",
   "free/gpt-oss-20b",
-  "free/nemotron-ultra-253b",
-  "free/nemotron-3-super-120b",
-  "free/nemotron-super-49b",
   "free/deepseek-v3.2",
-  "free/mistral-large-3-675b",
   "free/qwen3-coder-480b",
-  "free/devstral-2-123b",
   "free/glm-4.7",
   "free/llama-4-maverick",
+  "free/qwen3-next-80b-a3b-thinking",
+  "free/mistral-small-4-119b",
 ]);
 /** Pick the best available free model that isn't excluded. */
 function pickFreeModel(excludeList?: Set<string>): string | undefined {

@@ -599,13 +599,12 @@ try {
     'openai/gpt-5-mini', 'openai/gpt-5-nano', 'openai/gpt-5.4-nano', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'openai/o3', 'openai/o4-mini',
     'google/gemini-3.1-pro', 'google/gemini-3.1-flash-lite', 'google/gemini-3-pro-preview', 'google/gemini-3-flash-preview',
     'google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'google/gemini-2.5-flash-lite',
-    'deepseek/deepseek-chat', 'deepseek/deepseek-reasoner', 'moonshot/kimi-k2.6', 'nvidia/kimi-k2.5',
+    'deepseek/deepseek-chat', 'deepseek/deepseek-reasoner', 'moonshot/kimi-k2.6', 'moonshot/kimi-k2.5',
     'xai/grok-3', 'xai/grok-4-0709', 'xai/grok-4-1-fast-reasoning',
     'minimax/minimax-m2.7', 'minimax/minimax-m2.5',
-    'free/gpt-oss-120b', 'free/gpt-oss-20b',
-    'free/nemotron-ultra-253b', 'free/deepseek-v3.2', 'free/mistral-large-3-675b',
-    'free/qwen3-coder-480b', 'free/devstral-2-123b', 'free/llama-4-maverick',
-    'free/nemotron-3-super-120b', 'free/nemotron-super-49b', 'free/glm-4.7',
+    'free/gpt-oss-120b', 'free/gpt-oss-20b', 'free/deepseek-v3.2',
+    'free/qwen3-coder-480b', 'free/llama-4-maverick', 'free/glm-4.7',
+    'free/qwen3-next-80b-a3b-thinking', 'free/mistral-small-4-119b',
     'zai/glm-5.1', 'zai/glm-5', 'zai/glm-5-turbo'
   ];
 
@@ -892,14 +891,14 @@ echo "  /model sonnet    → claude-sonnet-4.6"
 echo "  /model opus      → claude-opus-4.7"
 echo "  /model codex     → openai/gpt-5.3-codex"
 echo "  /model deepseek  → deepseek/deepseek-chat"
-echo "  /model free      → nemotron-ultra-253b (strongest free)"
+echo "  /model free      → gpt-oss-120b (default free)"
 echo ""
 echo "Free models (no wallet needed):"
-echo "  /model nemotron       → nemotron-ultra-253b (strongest free)"
-echo "  /model deepseek-free  → deepseek-v3.2"
-echo "  /model mistral-free   → mistral-large-675b"
-echo "  /model devstral       → devstral-2-123b (coding)"
+echo "  /model qwen-thinking  → qwen3-next-80b-a3b-thinking (fast reasoning)"
+echo "  /model mistral-small  → mistral-small-4-119b (fast chat)"
 echo "  /model qwen-coder     → qwen3-coder-480b (coding)"
+echo "  /model glm-free       → glm-4.7 (fastest generalist)"
+echo "  /model deepseek-free  → deepseek-v3.2"
 echo "  /model maverick       → llama-4-maverick"
 echo ""
 echo "OpenClaw slash commands:"

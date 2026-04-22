@@ -73432,7 +73432,7 @@ var DEFAULT_ROUTING_CONFIG = {
         // 1,398ms, IQ 46 — smarter fallback
         "deepseek/deepseek-chat",
         // 1,431ms, IQ 32, 41% retention
-        "nvidia/kimi-k2.5",
+        "moonshot/kimi-k2.5",
         // 1,646ms, IQ 47, strong quality
         "google/gemini-3.1-flash-lite",
         // $0.25/$1.50, 1M context — newest flash-lite
@@ -73447,7 +73447,7 @@ var DEFAULT_ROUTING_CONFIG = {
       ]
     },
     MEDIUM: {
-      primary: "nvidia/kimi-k2.5",
+      primary: "moonshot/kimi-k2.5",
       // 1,646ms, IQ 47, $0.60/$3.00 — strong tool use, quality output
       fallback: [
         "google/gemini-3-flash-preview",
@@ -73556,7 +73556,7 @@ var DEFAULT_ROUTING_CONFIG = {
       primary: "moonshot/kimi-k2.6",
       // $0.95/$4.00 - Moonshot flagship (256K ctx, vision + reasoning)
       fallback: [
-        "nvidia/kimi-k2.5",
+        "moonshot/kimi-k2.5",
         // $0.60/$3.00 - proven reliable NVIDIA fallback when Moonshot direct API falters
         "google/gemini-2.5-flash",
         // 60% retention, fast growth
@@ -73571,7 +73571,7 @@ var DEFAULT_ROUTING_CONFIG = {
       fallback: [
         "moonshot/kimi-k2.6",
         // Moonshot flagship
-        "nvidia/kimi-k2.5",
+        "moonshot/kimi-k2.5",
         "google/gemini-2.5-flash",
         // 60% retention, good coding capability
         "google/gemini-2.5-pro",
@@ -73593,7 +73593,7 @@ var DEFAULT_ROUTING_CONFIG = {
         "google/gemini-3-pro-preview",
         "moonshot/kimi-k2.6",
         // Moonshot flagship
-        "nvidia/kimi-k2.5"
+        "moonshot/kimi-k2.5"
       ]
     },
     REASONING: {
@@ -73619,7 +73619,7 @@ var DEFAULT_ROUTING_CONFIG = {
       primary: "openai/gpt-4o-mini",
       // $0.15/$0.60 - best tool compliance at lowest cost
       fallback: [
-        "nvidia/kimi-k2.5",
+        "moonshot/kimi-k2.5",
         // 1,646ms, strong tool use quality
         "anthropic/claude-haiku-4.5",
         // 2,305ms
@@ -73628,7 +73628,7 @@ var DEFAULT_ROUTING_CONFIG = {
       ]
     },
     MEDIUM: {
-      primary: "nvidia/kimi-k2.5",
+      primary: "moonshot/kimi-k2.5",
       // 1,646ms, $0.60/$3.00 - strong tool use, proper function calls
       fallback: [
         "xai/grok-4-1-fast-non-reasoning",
@@ -73750,11 +73750,12 @@ var MODEL_ALIASES = {
   deepseek: "deepseek/deepseek-chat",
   "deepseek-chat": "deepseek/deepseek-chat",
   reasoner: "deepseek/deepseek-reasoner",
-  // Kimi / Moonshot — K2.6 is Moonshot's flagship (only via Moonshot API). K2.5 stays nvidia-hosted for reliability.
-  kimi: "nvidia/kimi-k2.5",
-  moonshot: "nvidia/kimi-k2.5",
-  "kimi-k2.5": "nvidia/kimi-k2.5",
-  "moonshot/kimi-k2.5": "nvidia/kimi-k2.5",
+  // Kimi / Moonshot — K2.6 is Moonshot's flagship. K2.5 now routes to Moonshot direct
+  // (NVIDIA-hosted K2.5 retired 2026-04-21: slow throughput; Moonshot has better SLA).
+  kimi: "moonshot/kimi-k2.5",
+  moonshot: "moonshot/kimi-k2.5",
+  "kimi-k2.5": "moonshot/kimi-k2.5",
+  "nvidia/kimi-k2.5": "moonshot/kimi-k2.5",
   "kimi-k2.6": "moonshot/kimi-k2.6",
   // Google
   gemini: "google/gemini-2.5-pro",
@@ -73776,38 +73777,53 @@ var MODEL_ALIASES = {
   "xai/grok-3-fast": "xai/grok-4-fast-reasoning",
   // delisted (too expensive)
   // NVIDIA — backward compat aliases (nvidia/xxx → free/xxx)
+  // Retired 2026-04-21: nemotron family, mistral-large-3-675b, devstral-2-123b.
+  // Server redirects their nvidia/xxx IDs to successors; we mirror that locally so
+  // stale user configs resolve to a model ClawRouter knows about.
   nvidia: "free/gpt-oss-120b",
   "gpt-120b": "free/gpt-oss-120b",
   "gpt-20b": "free/gpt-oss-20b",
   "nvidia/gpt-oss-120b": "free/gpt-oss-120b",
   "nvidia/gpt-oss-20b": "free/gpt-oss-20b",
-  "nvidia/nemotron-ultra-253b": "free/nemotron-ultra-253b",
-  "nvidia/nemotron-3-super-120b": "free/nemotron-3-super-120b",
-  "nvidia/nemotron-super-49b": "free/nemotron-super-49b",
   "nvidia/deepseek-v3.2": "free/deepseek-v3.2",
-  "nvidia/mistral-large-3-675b": "free/mistral-large-3-675b",
   "nvidia/qwen3-coder-480b": "free/qwen3-coder-480b",
   "qwen/qwen3-coder-480b-a35b-instruct": "free/qwen3-coder-480b",
-  "nvidia/devstral-2-123b": "free/devstral-2-123b",
   "nvidia/glm-4.7": "free/glm-4.7",
   "nvidia/llama-4-maverick": "free/llama-4-maverick",
+  "nvidia/qwen3-next-80b-a3b-thinking": "free/qwen3-next-80b-a3b-thinking",
+  "nvidia/mistral-small-4-119b": "free/mistral-small-4-119b",
+  // Retired free IDs → successors (mirror server-side redirects)
+  "nvidia/nemotron-ultra-253b": "free/qwen3-next-80b-a3b-thinking",
+  "nvidia/nemotron-3-super-120b": "free/qwen3-next-80b-a3b-thinking",
+  "nvidia/nemotron-super-49b": "free/qwen3-next-80b-a3b-thinking",
+  "nvidia/mistral-large-3-675b": "free/mistral-small-4-119b",
+  "nvidia/devstral-2-123b": "free/qwen3-coder-480b",
+  "free/nemotron-ultra-253b": "free/qwen3-next-80b-a3b-thinking",
+  "free/nemotron-3-super-120b": "free/qwen3-next-80b-a3b-thinking",
+  "free/nemotron-super-49b": "free/qwen3-next-80b-a3b-thinking",
+  "free/mistral-large-3-675b": "free/mistral-small-4-119b",
+  "free/devstral-2-123b": "free/qwen3-coder-480b",
   // Free model shorthand aliases
   "deepseek-free": "free/deepseek-v3.2",
-  "mistral-free": "free/mistral-large-3-675b",
+  "mistral-free": "free/mistral-small-4-119b",
   "glm-free": "free/glm-4.7",
   "llama-free": "free/llama-4-maverick",
-  nemotron: "free/nemotron-ultra-253b",
-  "nemotron-ultra": "free/nemotron-ultra-253b",
-  "nemotron-253b": "free/nemotron-ultra-253b",
-  "nemotron-super": "free/nemotron-super-49b",
-  "nemotron-49b": "free/nemotron-super-49b",
-  "nemotron-120b": "free/nemotron-3-super-120b",
-  devstral: "free/devstral-2-123b",
-  "devstral-2": "free/devstral-2-123b",
   "qwen-coder": "free/qwen3-coder-480b",
   "qwen-coder-free": "free/qwen3-coder-480b",
+  "qwen-thinking": "free/qwen3-next-80b-a3b-thinking",
+  "qwen3-next": "free/qwen3-next-80b-a3b-thinking",
+  "mistral-small": "free/mistral-small-4-119b",
+  // Retired shorthand aliases redirect to successors
+  nemotron: "free/qwen3-next-80b-a3b-thinking",
+  "nemotron-ultra": "free/qwen3-next-80b-a3b-thinking",
+  "nemotron-253b": "free/qwen3-next-80b-a3b-thinking",
+  "nemotron-super": "free/qwen3-next-80b-a3b-thinking",
+  "nemotron-49b": "free/qwen3-next-80b-a3b-thinking",
+  "nemotron-120b": "free/qwen3-next-80b-a3b-thinking",
+  devstral: "free/qwen3-coder-480b",
+  "devstral-2": "free/qwen3-coder-480b",
   maverick: "free/llama-4-maverick",
-  free: "free/nemotron-ultra-253b",
+  free: "free/gpt-oss-120b",
   // MiniMax
   minimax: "minimax/minimax-m2.7",
   "minimax-m2.7": "minimax/minimax-m2.7",
@@ -74282,9 +74298,10 @@ var BLOCKRUN_MODELS = [
     agentic: true,
     toolCalling: true
   },
-  // Kimi K2.5 — prefer nvidia-hosted (more reliable); moonshot direct API is unreliable
+  // Kimi K2.5 — Moonshot direct is primary (better SLA). NVIDIA-hosted variant
+  // retired 2026-04-21 (slow throughput) and now redirects to moonshot.
   {
-    id: "nvidia/kimi-k2.5",
+    id: "moonshot/kimi-k2.5",
     name: "Kimi K2.5",
     version: "k2.5",
     inputPrice: 0.6,
@@ -74297,8 +74314,8 @@ var BLOCKRUN_MODELS = [
     toolCalling: true
   },
   {
-    id: "moonshot/kimi-k2.5",
-    name: "Kimi K2.5 (Moonshot)",
+    id: "nvidia/kimi-k2.5",
+    name: "Kimi K2.5 (NVIDIA, retired)",
     version: "k2.5",
     inputPrice: 0.6,
     outputPrice: 3,
@@ -74309,7 +74326,7 @@ var BLOCKRUN_MODELS = [
     agentic: true,
     toolCalling: true,
     deprecated: true,
-    fallbackModel: "nvidia/kimi-k2.5"
+    fallbackModel: "moonshot/kimi-k2.5"
   },
   // xAI / Grok
   {
@@ -74463,6 +74480,8 @@ var BLOCKRUN_MODELS = [
   // IDs use "free/" prefix so users see them as free in the /model picker.
   // ClawRouter maps free/xxx → nvidia/xxx before sending to BlockRun upstream.
   // toolCalling intentionally omitted: structured function calling unverified.
+  // Slimmed 2026-04-21 to 8 models; retired nemotron family, mistral-large-3-675b,
+  // and devstral-2-123b. Successors: qwen3-next-80b-a3b-thinking, mistral-small-4-119b.
   {
     id: "free/gpt-oss-120b",
     name: "[Free] GPT-OSS 120B",
@@ -74482,36 +74501,6 @@ var BLOCKRUN_MODELS = [
     maxOutput: 16384
   },
   {
-    id: "free/nemotron-ultra-253b",
-    name: "[Free] Nemotron Ultra 253B",
-    version: "253b",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 131072,
-    maxOutput: 16384,
-    reasoning: true
-  },
-  {
-    id: "free/nemotron-3-super-120b",
-    name: "[Free] Nemotron 3 Super 120B",
-    version: "3-super-120b",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 131072,
-    maxOutput: 16384,
-    reasoning: true
-  },
-  {
-    id: "free/nemotron-super-49b",
-    name: "[Free] Nemotron Super 49B",
-    version: "super-49b",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 131072,
-    maxOutput: 16384,
-    reasoning: true
-  },
-  {
     id: "free/deepseek-v3.2",
     name: "[Free] DeepSeek V3.2",
     version: "v3.2",
@@ -74522,28 +74511,9 @@ var BLOCKRUN_MODELS = [
     reasoning: true
   },
   {
-    id: "free/mistral-large-3-675b",
-    name: "[Free] Mistral Large 675B",
-    version: "3-675b",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 131072,
-    maxOutput: 16384,
-    reasoning: true
-  },
-  {
     id: "free/qwen3-coder-480b",
     name: "[Free] Qwen3 Coder 480B",
     version: "480b",
-    inputPrice: 0,
-    outputPrice: 0,
-    contextWindow: 131072,
-    maxOutput: 16384
-  },
-  {
-    id: "free/devstral-2-123b",
-    name: "[Free] Devstral 2 123B",
-    version: "2-123b",
     inputPrice: 0,
     outputPrice: 0,
     contextWindow: 131072,
@@ -74568,6 +74538,25 @@ var BLOCKRUN_MODELS = [
     contextWindow: 131072,
     maxOutput: 16384,
     reasoning: true
+  },
+  {
+    id: "free/qwen3-next-80b-a3b-thinking",
+    name: "[Free] Qwen3-Next 80B Thinking",
+    version: "80b-a3b-thinking",
+    inputPrice: 0,
+    outputPrice: 0,
+    contextWindow: 131072,
+    maxOutput: 16384,
+    reasoning: true
+  },
+  {
+    id: "free/mistral-small-4-119b",
+    name: "[Free] Mistral Small 4 119B",
+    version: "small-4-119b",
+    inputPrice: 0,
+    outputPrice: 0,
+    contextWindow: 131072,
+    maxOutput: 16384
   },
   // Z.AI GLM-5 Models
   {
@@ -76603,15 +76592,12 @@ var ROUTING_PROFILES = /* @__PURE__ */ new Set([
 var FREE_MODELS = /* @__PURE__ */ new Set([
   "free/gpt-oss-120b",
   "free/gpt-oss-20b",
-  "free/nemotron-ultra-253b",
-  "free/nemotron-3-super-120b",
-  "free/nemotron-super-49b",
   "free/deepseek-v3.2",
-  "free/mistral-large-3-675b",
   "free/qwen3-coder-480b",
-  "free/devstral-2-123b",
   "free/glm-4.7",
-  "free/llama-4-maverick"
+  "free/llama-4-maverick",
+  "free/qwen3-next-80b-a3b-thinking",
+  "free/mistral-small-4-119b"
 ]);
 function pickFreeModel(excludeList) {
   for (const m of FREE_MODELS) {

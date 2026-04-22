@@ -1046,7 +1046,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       fallback: [
         "google/gemini-3-flash-preview", // 1,398ms, IQ 46 — smarter fallback
         "deepseek/deepseek-chat", // 1,431ms, IQ 32, 41% retention
-        "nvidia/kimi-k2.5", // 1,646ms, IQ 47, strong quality
+        "moonshot/kimi-k2.5", // 1,646ms, IQ 47, strong quality
         "google/gemini-3.1-flash-lite", // $0.25/$1.50, 1M context — newest flash-lite
         "google/gemini-2.5-flash-lite", // 1,353ms, $0.10/$0.40
         "openai/gpt-5.4-nano", // $0.20/$1.25, 1M context
@@ -1055,7 +1055,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       ],
     },
     MEDIUM: {
-      primary: "nvidia/kimi-k2.5", // 1,646ms, IQ 47, $0.60/$3.00 — strong tool use, quality output
+      primary: "moonshot/kimi-k2.5", // 1,646ms, IQ 47, $0.60/$3.00 — strong tool use, quality output
       fallback: [
         "google/gemini-3-flash-preview", // 1,398ms, IQ 46 — nearly same IQ, faster + cheaper
         "deepseek/deepseek-chat", // 1,431ms, IQ 32, 41% retention
@@ -1132,7 +1132,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
     SIMPLE: {
       primary: "moonshot/kimi-k2.6", // $0.95/$4.00 - Moonshot flagship (256K ctx, vision + reasoning)
       fallback: [
-        "nvidia/kimi-k2.5", // $0.60/$3.00 - proven reliable NVIDIA fallback when Moonshot direct API falters
+        "moonshot/kimi-k2.5", // $0.60/$3.00 - proven reliable NVIDIA fallback when Moonshot direct API falters
         "google/gemini-2.5-flash", // 60% retention, fast growth
         "anthropic/claude-haiku-4.5",
         "google/gemini-2.5-flash-lite",
@@ -1143,7 +1143,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       primary: "openai/gpt-5.3-codex", // $1.75/$14 - 400K context, 128K output, replaces 5.2
       fallback: [
         "moonshot/kimi-k2.6", // Moonshot flagship
-        "nvidia/kimi-k2.5",
+        "moonshot/kimi-k2.5",
         "google/gemini-2.5-flash", // 60% retention, good coding capability
         "google/gemini-2.5-pro",
         "xai/grok-4-0709",
@@ -1160,7 +1160,7 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
         "google/gemini-3.1-pro", // Newest Gemini
         "google/gemini-3-pro-preview",
         "moonshot/kimi-k2.6", // Moonshot flagship
-        "nvidia/kimi-k2.5",
+        "moonshot/kimi-k2.5",
       ],
     },
     REASONING: {
@@ -1180,13 +1180,13 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
     SIMPLE: {
       primary: "openai/gpt-4o-mini", // $0.15/$0.60 - best tool compliance at lowest cost
       fallback: [
-        "nvidia/kimi-k2.5", // 1,646ms, strong tool use quality
+        "moonshot/kimi-k2.5", // 1,646ms, strong tool use quality
         "anthropic/claude-haiku-4.5", // 2,305ms
         "xai/grok-4-1-fast-non-reasoning", // 1,244ms, fast fallback
       ],
     },
     MEDIUM: {
-      primary: "nvidia/kimi-k2.5", // 1,646ms, $0.60/$3.00 - strong tool use, proper function calls
+      primary: "moonshot/kimi-k2.5", // 1,646ms, $0.60/$3.00 - strong tool use, proper function calls
       fallback: [
         "xai/grok-4-1-fast-non-reasoning", // 1,244ms, fast fallback
         "openai/gpt-4o-mini", // 2,764ms, reliable tool calling
