@@ -6,10 +6,12 @@
 
 <p>Agents can't sign up for accounts. Agents can't enter credit cards.<br>
 Agents can only sign transactions.<br><br>
-<strong>ClawRouter is the only LLM router that lets agents operate independently.</strong></p>
+<strong>ClawRouter is the only LLM router that lets agents operate independently.</strong><br><br>
+<em>8 models free, no crypto required. No signup. No API key. No credit card.</em></p>
 
 <br>
 
+<img src="https://img.shields.io/badge/🆓_8_Free_Models-success?style=for-the-badge" alt="8 free models">&nbsp;
 <img src="https://img.shields.io/badge/🤖_Agent--Native-black?style=for-the-badge" alt="Agent native">&nbsp;
 <img src="https://img.shields.io/badge/🔑_Zero_API_Keys-blue?style=for-the-badge" alt="No API keys">&nbsp;
 <img src="https://img.shields.io/badge/⚡_Local_Routing-yellow?style=for-the-badge" alt="Local routing">&nbsp;
@@ -44,6 +46,7 @@ Every other LLM router was built for **human developers** — create an account,
 
 ClawRouter is built for the agent-first world:
 
+- **Starts at $0** — 8 NVIDIA models are free forever, no balance needed to start
 - **No accounts** — a wallet is generated locally, no signup
 - **No API keys** — your wallet signature IS authentication
 - **No model selection** — 15-dimension scoring picks the right model automatically
@@ -59,6 +62,7 @@ This is the stack that lets agents operate autonomously: **x402 + USDC + local r
 |                  | OpenRouter        | LiteLLM          | Martian           | Portkey           | **ClawRouter**          |
 | ---------------- | ----------------- | ---------------- | ----------------- | ----------------- | ----------------------- |
 | **Models**       | 200+              | 100+             | Smart routing     | Gateway           | **55+**                 |
+| **Free tier**    | Rate-limited      | BYO keys         | No                | No                | **8 models, no signup** |
 | **Routing**      | Manual selection  | Manual selection | Smart (closed)    | Observability     | **Smart (open source)** |
 | **Auth**         | Account + API key | Your API keys    | Account + API key | Account + API key | **Wallet signature**    |
 | **Payment**      | Credit card       | BYO keys         | Credit card       | $49-499/mo        | **USDC per-request**    |
@@ -73,6 +77,8 @@ This is the stack that lets agents operate autonomously: **x402 + USDC + local r
 ---
 
 ## Quick Start
+
+> **No wallet? 8 models work free out of the box.** Install, run, and pin `nvidia/gpt-oss-120b` — no crypto, no signup, no balance required. Add USDC later when you want paid models.
 
 ### Option A — OpenClaw Agent
 
@@ -97,8 +103,8 @@ No OpenClaw required. ClawRouter runs as a local proxy on port 8402.
 npx @blockrun/clawrouter
 ```
 
-**2. Fund your wallet**
-Your wallet address is printed on first run. Send a few USDC on Base or Solana — $5 covers thousands of requests.
+**2. Fund your wallet** — optional, skip for free tier
+Your wallet address is printed on first run. For paid models, send a few USDC on Base or Solana — $5 covers thousands of requests. To stay at $0, pin any of the 8 free models (e.g. `nvidia/gpt-oss-120b`) or use `/model free` inside OpenClaw.
 
 **3. Point your client at `http://localhost:8402`**
 
@@ -168,11 +174,12 @@ response = client.chat.completions.create(model="blockrun/auto", messages=[...])
 
 Choose your routing strategy with `/model <profile>`:
 
-| Profile          | Strategy           | Savings | Best For         |
-| ---------------- | ------------------ | ------- | ---------------- |
-| `/model auto`    | Balanced (default) | 74-100% | General use      |
-| `/model eco`     | Cheapest possible  | 95-100% | Maximum savings  |
-| `/model premium` | Best quality       | 0%      | Mission-critical |
+| Profile          | Strategy           | Savings  | Best For             |
+| ---------------- | ------------------ | -------- | -------------------- |
+| `/model free`    | Free NVIDIA models | **100%** | $0 balance, learning |
+| `/model auto`    | Balanced (default) | 74-100%  | General use          |
+| `/model eco`     | Cheapest possible  | 95-100%  | Maximum savings      |
+| `/model premium` | Best quality       | 0%       | Mission-critical     |
 
 **Shortcuts:** `/model grok`, `/model br-sonnet`, `/model gpt5`, `/model o3`
 
@@ -228,12 +235,12 @@ curl -X POST http://localhost:8402/v1/videos/generations \
   -d '{"model":"bytedance/seedance-2.0-fast","prompt":"a red apple slowly spinning","duration_seconds":5}'
 ```
 
-| Model                          | Provider           | Price      | Duration              |
-| ------------------------------ | ------------------ | ---------- | --------------------- |
-| `bytedance/seedance-1.5-pro`   | ByteDance Seedance | $0.03/sec  | 5s default, up to 10s |
-| `bytedance/seedance-2.0-fast`  | ByteDance Seedance | $0.15/sec  | 5s default, up to 10s |
-| `bytedance/seedance-2.0`       | ByteDance Seedance | $0.30/sec  | 5s default, up to 10s |
-| `xai/grok-imagine-video`       | xAI Grok Imagine   | $0.05/sec  | 8s default            |
+| Model                         | Provider           | Price     | Duration              |
+| ----------------------------- | ------------------ | --------- | --------------------- |
+| `bytedance/seedance-1.5-pro`  | ByteDance Seedance | $0.03/sec | 5s default, up to 10s |
+| `bytedance/seedance-2.0-fast` | ByteDance Seedance | $0.15/sec | 5s default, up to 10s |
+| `bytedance/seedance-2.0`      | ByteDance Seedance | $0.30/sec | 5s default, up to 10s |
+| `xai/grok-imagine-video`      | xAI Grok Imagine   | $0.05/sec | 8s default            |
 
 Calls block for 30–120s while the upstream polls the job. Text-to-video and image-to-video (`image_url` parameter) are both supported. Seedance 2.0 Fast typically returns in 60–80s; 2.0 Pro trades latency for quality.
 
@@ -569,7 +576,7 @@ ClawRouter works with any tool that makes OpenAI-compatible API calls — point 
 
 ### Is ClawRouter free?
 
-ClawRouter itself is free and MIT licensed. You pay only for the LLM API calls routed through it — and 11 models (DeepSeek V3.2, Nemotron Ultra 253B, Mistral Large 675B, Llama 4 Maverick, and more) are completely free. Use `/model free` for Nemotron Ultra 253B, or pick any free model by name.
+ClawRouter itself is free and MIT licensed. You pay only for the LLM API calls routed through it — and 8 NVIDIA-hosted models (`gpt-oss-120b`, `gpt-oss-20b`, `deepseek-v3.2`, `qwen3-coder-480b`, `glm-4.7`, `llama-4-maverick`, `qwen3-next-80b-a3b-thinking`, `mistral-small-4-119b`) are completely free. Use `/model free` to smart-route across them, or pick any by name.
 
 ---
 
