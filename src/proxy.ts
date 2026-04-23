@@ -1467,6 +1467,9 @@ const IMAGE_PRICING: Record<string, { default: number; sizes?: Record<string, nu
 // Video pricing (must match server's VIDEO_MODELS in blockrun/src/lib/models.ts)
 const VIDEO_PRICING: Record<string, { pricePerSecond: number; defaultDurationSeconds: number }> = {
   "xai/grok-imagine-video": { pricePerSecond: 0.05, defaultDurationSeconds: 8 },
+  "bytedance/seedance-1.5-pro": { pricePerSecond: 0.03, defaultDurationSeconds: 5 },
+  "bytedance/seedance-2.0-fast": { pricePerSecond: 0.15, defaultDurationSeconds: 5 },
+  "bytedance/seedance-2.0": { pricePerSecond: 0.3, defaultDurationSeconds: 5 },
 };
 
 /**

@@ -4,6 +4,16 @@ All notable changes to ClawRouter.
 
 ---
 
+## v0.12.162 — Apr 23, 2026
+
+- **ByteDance Seedance video models wired into the client.** BlockRun server has exposed three Seedance models since late April — `bytedance/seedance-1.5-pro` ($0.03/sec), `bytedance/seedance-2.0-fast` ($0.15/sec, ~60–80s gen time), and `bytedance/seedance-2.0` Pro ($0.30/sec) — all 720p, text-to-video + image-to-video, 5s default and up to 10s. The `/v1/videos/generations` proxy passthrough in `src/proxy.ts` already forwarded any `model` value untouched, so **actual USDC charges were always correct** (server dictates the amount in its 402 response and `payment-preauth.ts` caches the server-sent `PaymentRequired`, not a local estimate — charges never depended on ClawRouter's local pricing table). Three client-side gaps were fixed anyway:
+  - **Usage telemetry was wrong for Seedance.** `estimateVideoCost` in `src/proxy.ts` only knew `xai/grok-imagine-video`, so every Seedance request logged `$0.42/clip` to `logUsage` regardless of what the user was actually billed — skewing `/usage` output, savings %, and journal cost fields. `VIDEO_PRICING` now carries all four models at real server rates.
+  - **OpenClaw's native video UI only saw one model.** `buildVideoGenerationProvider` in `src/index.ts` advertised `models: ["xai/grok-imagine-video"]`, so users of the UI picker couldn't pick Seedance at all; the only path was raw curl with an explicit `model` field. The `models` array now lists all four, and provider capabilities widen to `maxDurationSeconds: 10` / `supportedDurationSeconds: [5, 8, 10]` to cover both vendors' ranges (server still validates per-model `maxDurationSeconds`, so invalid combos return a clean 400).
+  - **README docs only mentioned Grok.** Video-generation section now lists all four models in the table, swaps the curl example to `bytedance/seedance-2.0-fast` (sweet-spot price/quality), and makes the upstream-polling note vendor-neutral instead of xAI-specific.
+- **Docs: fixed proxy port in free-models guide.** Thanks to @Bortlesboat (#160) for catching `4402` → `8402` typos in `docs/11-free-ai-models-zero-cost-blockrun.md`. The rest of the repo, `src/config.ts` (`DEFAULT_PORT = 8402`), and all other docs have always said 8402; that one guide was sending new users at the wrong local port.
+
+---
+
 ## v0.12.161 — Apr 22, 2026
 
 - **De-Gemini the Anthropic-primary fallback chains.** When Anthropic hiccups (503s, capacity), Gemini's own "high demand" 503s correlate with the same events — agents fall back from Claude to Gemini together, both overloaded. Reordered `src/router/config.ts` fallback arrays in the two places Anthropic sits primary: `premiumTiers.COMPLEX` (claude-opus-4.7 primary) and `agenticTiers.COMPLEX` (claude-sonnet-4.6 primary). New order: in-family Anthropic hot swap (opus-4.6 / sonnet-4.6) → xAI Grok (independent infra, strong on complex + tool use) → Moonshot Kimi K2.6 / K2.5 (separate Moonshot infra) → OpenAI flagship (slow but reliable) → DeepSeek (cheap reliable) → `free/qwen3-coder-480b` (NVIDIA free ultimate backstop). Gemini removed entirely from both chains. Other Anthropic-primary tiers (`premiumTiers.REASONING`, `agenticTiers.REASONING`) already had no Gemini and were not touched.

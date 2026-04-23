@@ -220,19 +220,22 @@ Generate images directly from chat with `/imagegen`:
 
 ## Video Generation
 
-Generate short AI videos via `POST http://localhost:8402/v1/videos/generations`. ClawRouter proxies the BlockRun gateway, handles x402 payment, and downloads the returned MP4 to local disk — the response `url` points to `http://localhost:8402/videos/<file>.mp4` so the asset survives past xAI's temporary bucket.
+Generate short AI videos via `POST http://localhost:8402/v1/videos/generations`. ClawRouter proxies the BlockRun gateway, handles x402 payment, and downloads the returned MP4 to local disk — the response `url` points to `http://localhost:8402/videos/<file>.mp4` so the asset survives past the upstream's temporary bucket.
 
 ```bash
 curl -X POST http://localhost:8402/v1/videos/generations \
   -H "Content-Type: application/json" \
-  -d '{"model":"xai/grok-imagine-video","prompt":"a red apple slowly spinning"}'
+  -d '{"model":"bytedance/seedance-2.0-fast","prompt":"a red apple slowly spinning","duration_seconds":5}'
 ```
 
-| Model                    | Provider         | Price      | Duration  |
-| ------------------------ | ---------------- | ---------- | --------- |
-| `xai/grok-imagine-video` | xAI Grok Imagine | $0.05/sec  | 8s default |
+| Model                          | Provider           | Price      | Duration              |
+| ------------------------------ | ------------------ | ---------- | --------------------- |
+| `bytedance/seedance-1.5-pro`   | ByteDance Seedance | $0.03/sec  | 5s default, up to 10s |
+| `bytedance/seedance-2.0-fast`  | ByteDance Seedance | $0.15/sec  | 5s default, up to 10s |
+| `bytedance/seedance-2.0`       | ByteDance Seedance | $0.30/sec  | 5s default, up to 10s |
+| `xai/grok-imagine-video`       | xAI Grok Imagine   | $0.05/sec  | 8s default            |
 
-Calls block for 30–120s while xAI polls the job. Text-to-video and image-to-video (`image_url` parameter) are both supported.
+Calls block for 30–120s while the upstream polls the job. Text-to-video and image-to-video (`image_url` parameter) are both supported. Seedance 2.0 Fast typically returns in 60–80s; 2.0 Pro trades latency for quality.
 
 ## Image Editing (img2img)
 
