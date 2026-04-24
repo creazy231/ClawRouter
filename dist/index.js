@@ -74667,7 +74667,7 @@ var TIMESTAMP_PATTERN2 = /^\[\w{3}\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+\w+\]\s*/
 function normalizeForCache(obj) {
   const result = {};
   for (const [key, value] of Object.entries(obj)) {
-    if (["stream", "user", "request_id", "x-request-id"].includes(key)) {
+    if (["user", "request_id", "x-request-id"].includes(key)) {
       continue;
     }
     if (key === "messages" && Array.isArray(value)) {
@@ -78009,9 +78009,7 @@ async function startProxy(options) {
             }
             if (pollError) {
               res.writeHead(502, { "Content-Type": "application/json" });
-              res.end(
-                JSON.stringify({ error: "Video generation failed", details: pollError })
-              );
+              res.end(JSON.stringify({ error: "Video generation failed", details: pollError }));
               return;
             }
             if (!finalResult.data) {
@@ -79148,7 +79146,7 @@ async function proxyRequest(req, res, apiBase, payFetch, options, routerOpts, de
       );
     }
   }
-  const cacheKey2 = ResponseCache.generateKey(body);
+  const cacheKey2 = `${isStreaming ? "sse" : "json"}:${ResponseCache.generateKey(body)}`;
   const reqHeaders = {};
   for (const [key, value] of Object.entries(req.headers)) {
     if (typeof value === "string") reqHeaders[key] = value;
@@ -79162,7 +79160,7 @@ async function proxyRequest(req, res, apiBase, payFetch, options, routerOpts, de
       return;
     }
   }
-  const dedupKey = RequestDeduplicator.hash(body);
+  const dedupKey = `${isStreaming ? "sse" : "json"}:${RequestDeduplicator.hash(body)}`;
   const cached = deduplicator.getCached(dedupKey);
   if (cached) {
     res.writeHead(cached.status, cached.headers);
@@ -79879,8 +79877,9 @@ data: [DONE]
           };
           if (rsp.choices && Array.isArray(rsp.choices)) {
             for (const choice of rsp.choices) {
+              const toolCalls = choice.message?.tool_calls ?? choice.delta?.tool_calls;
               const rawContent = choice.message?.content ?? choice.delta?.content ?? "";
-              const content = stripThinkingTokens(rawContent);
+              const content = toolCalls && toolCalls.length > 0 ? "" : stripThinkingTokens(rawContent);
               const role = choice.message?.role ?? choice.delta?.role ?? "assistant";
               const index2 = choice.index ?? 0;
               if (content) {
@@ -79944,7 +79943,6 @@ data: [DONE]
                 safeWrite(res, contentData);
                 responseChunks.push(Buffer.from(contentData));
               }
-              const toolCalls = choice.message?.tool_calls ?? choice.delta?.tool_calls;
               if (toolCalls && toolCalls.length > 0) {
                 const toolCallChunk = {
                   ...baseChunk,
@@ -80078,13 +80076,24 @@ data: [DONE]
       if (responseBody.length > 0) {
         try {
           const parsed = JSON.parse(responseBody.toString());
-          if (parsed.choices?.[0]?.message?.content) {
-            const stripped = stripThinkingTokens(parsed.choices[0].message.content);
-            if (stripped !== parsed.choices[0].message.content) {
-              parsed.choices[0].message.content = stripped;
-              responseBody = Buffer.from(JSON.stringify(parsed));
+          let changed = false;
+          for (const choice of parsed.choices ?? []) {
+            const message = choice.message;
+            if (!message || typeof message.content !== "string") continue;
+            if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+              if (message.content !== "") {
+                message.content = "";
+                changed = true;
+              }
+              continue;
+            }
+            const stripped = stripThinkingTokens(message.content);
+            if (stripped !== message.content) {
+              message.content = stripped;
+              changed = true;
             }
           }
+          if (changed) responseBody = Buffer.from(JSON.stringify(parsed));
         } catch {
         }
       }
@@ -82816,10 +82825,7 @@ var plugin = {
           bucket.push(svc);
           byCategory.set(svc.category, bucket);
         }
-        const toolWidth = Math.max(
-          ...PARTNER_SERVICES.map((s3) => `blockrun_${s3.id}`.length),
-          28
-        );
+        const toolWidth = Math.max(...PARTNER_SERVICES.map((s3) => `blockrun_${s3.id}`.length), 28);
         const priceWidth = Math.max(
           ...PARTNER_SERVICES.map(
             (s3) => s3.pricing.perUnit === "free" ? 4 : `${s3.pricing.perUnit}/${s3.pricing.unit}`.length
