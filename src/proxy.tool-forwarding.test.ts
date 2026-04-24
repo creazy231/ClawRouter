@@ -177,4 +177,113 @@ describe("tool forwarding", () => {
     expect(json.choices?.[0]?.message?.content).toBe("");
     expect(json.choices?.[0]?.message?.tool_calls).toHaveLength(1);
   });
+
+  it("suppresses assistant content in SSE chunks when upstream returns tool_calls", async () => {
+    upstreamResponse = {
+      id: "chatcmpl-tool-content-sse",
+      object: "chat.completion",
+      created: Math.floor(Date.now() / 1000),
+      model: "moonshot/kimi-k2.6",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content:
+              "The user wants the current time. I should call get_current_time with Chicago.",
+            tool_calls: [
+              {
+                id: "get_current_time:0",
+                type: "function",
+                function: {
+                  name: "get_current_time",
+                  arguments: '{"city":"Chicago"}',
+                },
+              },
+            ],
+          },
+          finish_reason: "tool_calls",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    };
+
+    const res = await fetch(`${proxy.baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "moonshot/kimi-k2.6",
+        stream: true,
+        messages: [{ role: "user", content: "What time is it in Chicago right now? Use the tool." }],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "get_current_time",
+              description: "Get current time",
+              parameters: { type: "object" },
+            },
+          },
+        ],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+    const text = await res.text();
+
+    const events = text
+      .split("\n\n")
+      .map((block) =>
+        block
+          .split("\n")
+          .filter((line) => line.startsWith("data: "))
+          .map((line) => line.slice(6))
+          .join(""),
+      )
+      .filter((payload) => payload && payload !== "[DONE]");
+
+    const chunks = events
+      .map((payload) => {
+        try {
+          return JSON.parse(payload) as {
+            choices?: Array<{
+              delta?: {
+                role?: string;
+                content?: string;
+                tool_calls?: Array<{ function?: { name?: string } }>;
+              };
+              finish_reason?: string | null;
+            }>;
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter((chunk): chunk is NonNullable<typeof chunk> => chunk !== null);
+
+    // No chunk should contain the planning prose as delta.content
+    const planningLeak = chunks.some((chunk) =>
+      chunk.choices?.some((choice) => {
+        const content = choice.delta?.content;
+        return typeof content === "string" && content.includes("get_current_time with Chicago");
+      }),
+    );
+    expect(planningLeak).toBe(false);
+
+    // A tool_calls chunk must be emitted with the upstream function call
+    const toolCallChunks = chunks.flatMap((chunk) =>
+      (chunk.choices ?? []).flatMap((choice) => choice.delta?.tool_calls ?? []),
+    );
+    expect(toolCallChunks).toHaveLength(1);
+    expect(toolCallChunks[0]?.function?.name).toBe("get_current_time");
+
+    // The terminal chunk must signal tool_calls completion
+    const finishReasons = chunks.flatMap((chunk) =>
+      (chunk.choices ?? [])
+        .map((choice) => choice.finish_reason)
+        .filter((fr): fr is string => typeof fr === "string"),
+    );
+    expect(finishReasons).toContain("tool_calls");
+  });
 });
