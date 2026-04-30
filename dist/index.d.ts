@@ -350,6 +350,9 @@ type OpenClawPluginDefinition = {
     register?: (api: OpenClawPluginApi) => void | Promise<void>;
     activate?: (api: OpenClawPluginApi) => void | Promise<void>;
     deactivate?: (api: OpenClawPluginApi) => void | Promise<void>;
+    reload?: {
+        noopPrefixes?: string[];
+    };
 };
 
 /**
@@ -1256,9 +1259,9 @@ type UsageEntry = {
     inputTokens?: number;
     /** Output (completion) tokens reported by the provider */
     outputTokens?: number;
-    /** Partner service ID (e.g., "x_users_lookup") — only set for partner API calls */
+    /** Partner service ID (e.g., "image_generation") — only set for partner API calls */
     partnerId?: string;
-    /** Partner service name (e.g., "AttentionVC") — only set for partner API calls */
+    /** Partner service name (e.g., "BlockRun") — only set for partner API calls */
     service?: string;
 };
 /**
@@ -1617,9 +1620,9 @@ declare function clearStats(): Promise<{
 /**
  * Partner Service Registry
  *
- * Defines available partner APIs that can be called through XClawRouter's proxy.
- * Partners provide specialized data (Twitter/X, etc.) via x402 micropayments.
- * The same wallet used for LLM calls pays for partner API calls — zero extra setup.
+ * Defines available partner APIs that can be called through ClawRouter's proxy.
+ * Partners cover prediction-market data, realtime market quotes, and image/video
+ * generation — all paid via x402 micropayments on the same wallet as LLM calls.
  */
 type PartnerServiceParam = {
     name: string;
@@ -1627,6 +1630,7 @@ type PartnerServiceParam = {
     description: string;
     required: boolean;
 };
+type PartnerCategory = "Prediction markets" | "Market data" | "Image & Video";
 type PartnerServiceDefinition = {
     /** Unique service ID used in tool names: blockrun_{id} */
     id: string;
@@ -1634,7 +1638,11 @@ type PartnerServiceDefinition = {
     name: string;
     /** Partner providing this service */
     partner: string;
-    /** Short description for tool listing */
+    /** Category used for grouping in the `/partners` list view */
+    category: PartnerCategory;
+    /** Compact one-liner used in the `/partners` list (≤ 40 chars ideal) */
+    shortDescription: string;
+    /** Full description used for the tool's JSON Schema (LLM sees this) */
     description: string;
     /** Proxy path (relative to /v1) */
     proxyPath: string;
