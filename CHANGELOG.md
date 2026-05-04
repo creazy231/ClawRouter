@@ -4,6 +4,16 @@ All notable changes to ClawRouter.
 
 ---
 
+## v0.12.181 — May 4, 2026
+
+- **Main `clawrouter` SKILL caught up to multi-venue scope.** v0.12.180 expanded the dedicated `predexon` SKILL to BlockRun's 49-endpoint registry, but the **headline `clawrouter` SKILL** (the one OpenClaw and AI agents read first to decide whether ClawRouter is relevant) still said "Polymarket prediction market data" + "8 tools, Polymarket ↔ Kalshi". That description would have steered agents away from prediction-market questions about Kalshi/Limitless/Opinion/Predict.Fun, UMA resolution status, and wallet identity — even though the proxy and the predexon SKILL handle them.
+- **Updates**:
+  - Front-matter `description`: now lists Polymarket, Kalshi, Limitless, Opinion, Predict.Fun, dFlow + UMA oracle + wallet identity & clustering — so the discovery layer matches the actual capability.
+  - Section `### Polymarket (Predexon)` → renamed `### Prediction Markets (Predexon)`. Body rewritten as a 4-bucket summary (Markets & trading, Leaderboard & smart money, Wallet analytics, UMA oracle + wallet identity) with 49-endpoint count and accurate pricing tiers. Pointer to the dedicated `predexon` skill for the full reference.
+- **No code changes, no other SKILLs changed.** The `predexon` skill itself was already complete in v0.12.180. Pure visibility/triage fix on the headline SKILL.
+
+---
+
 ## v0.12.180 — May 4, 2026
 
 - **Predexon skill catches up to BlockRun's 49-endpoint registry.** BlockRun shipped 10 new prediction-market endpoints on 2026-05-03 (commits `9640528` + `a06c652`, prod revisions `00442-jqf` and `00443-45g`); ClawRouter's `/v1/pm/*` catch-all whitelist already proxied them silently, but `skills/predexon/SKILL.md` documented none — so OpenClaw users and AI agents using the skill couldn't discover them.
