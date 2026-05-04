@@ -1165,10 +1165,14 @@ type BlockRunModel = {
 declare const BLOCKRUN_MODELS: BlockRunModel[];
 /**
  * All BlockRun models in OpenClaw format (including aliases).
+ * Used for proxy-side resolution (alias → target ID), tool routing, etc.
  */
 declare const OPENCLAW_MODELS: ModelDefinitionConfig[];
 /**
  * Build a ModelProviderConfig for BlockRun.
+ *
+ * Returns only the TOP_MODELS-listed subset so the OpenClaw picker stays
+ * focused. Hidden models are still resolvable through the proxy.
  *
  * @param baseUrl - The proxy's local base URL (e.g., "http://127.0.0.1:12345")
  */

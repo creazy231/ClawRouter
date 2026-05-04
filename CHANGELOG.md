@@ -4,6 +4,24 @@ All notable changes to ClawRouter.
 
 ---
 
+## v0.12.179 — May 3, 2026
+
+- **Slow image generation no longer silently breaks.** `openai/gpt-image-2` (and any future model whose generation exceeds BlockRun's 30s inline window) returns `202 + { id, poll_url, poll_instructions }` from `POST /v1/images/generations`. ClawRouter previously took that 202 body and replied to the client with `200 OK` + the queued-job stub — no `data` array, no images, no error signal. The client (OpenClaw, SDK callers, curl) saw "success" with nothing usable.
+- **Fix**: mirror the existing video polling loop into `/v1/images/generations`. After the initial `payFetch` POST, if the response is 202 with `poll_url`, ClawRouter now polls `GET /v1/images/generations/{id}` every 3s (after a 2s warmup) for up to 5 minutes — exactly the pattern used for `/v1/videos/generations` since 2026-04-23. On `status=completed` the response is rewritten to the final `{ data: [...] }` body and flows through the same image-saving / localhost-rewrite path as fast models. On `failed` → 502 with details. On 5min timeout → 504 (no payment settled — server only settles on first completed poll). Client still sees a single blocking POST.
+- **`/v1/images/image2image` deliberately untouched.** BlockRun's `image2image` route has no `[id]` poll endpoint and no `INLINE_GEN_TIMEOUT` — it's fully synchronous server-side, so there's no 202 path to handle. Adding speculative polling there would be dead code.
+- **No payment-flow change.** `payFetch` handles wallet signing for the initial POST and each subsequent poll GET; BlockRun's `[id]` route binds the job to the payer wallet and settles idempotently on the first completed poll, identical to the video flow. `paymentStore.amountUsd` still reflects the verified-then-settled amount for `logUsage`.
+
+---
+
+## v0.12.178 — May 3, 2026
+
+- **DeepSeek V4 Pro added to REASONING fallbacks (auto + eco).** Backend shipped `deepseek/deepseek-v4-pro` (1.6T MoE / 49B active, 1M context — strongest open-weight reasoner; MMLU-Pro 87.5, GPQA 90.1, SWE-bench 80.6, LiveCodeBench 93.5) at **$0.50 in / $1.00 out per 1M under the 75% promo through 2026-05-31** (list $2.00/$4.00 after). Wired into `auto.tiers.REASONING.fallback` after `deepseek-reasoner`/`grok-4-fast-reasoning` and into `eco.REASONING.fallback` after `deepseek-reasoner`. V4 Flash thinking (`deepseek-reasoner`, $0.20/$0.40) stays primary because it's cheaper; V4 Pro is the harder-task escape hatch.
+- **DeepSeek chat/reasoner now V4 Flash semantics.** `deepseek/deepseek-chat` and `deepseek/deepseek-reasoner` (already in tier configs) had their upstream rerouted to V4 Flash non-thinking / thinking modes — repriced from $0.28/$0.42 to $0.20/$0.40 with 1M context (was 128K). No SDK source change needed — pricing fetched from `/v1/models` at runtime; tier configs got comment refresh to note the V4 Flash repricing.
+- **`deepseek/deepseek-v4-pro` added to `top-models.json`** so the OpenClaw `/model` picker surfaces the new flagship.
+- **No `FREE_MODELS` changes.** `nvidia/gpt-oss-120b` and `nvidia/gpt-oss-20b` were briefly delisted 2026-04-28 but **re-enabled 2026-04-30** with `available: true` + `hidden: true` — they no longer appear in `/v1/models` (so the picker hides them) but ClawRouter's `FREE_MODELS` set still uses them as the historical free defaults; direct calls work.
+
+---
+
 ## v0.12.177 — May 3, 2026
 
 - **Picker actually filtered now via the right layer.** v0.12.175 + v0.12.176 both targeted `cfg.models.providers.blockrun.models`, but per v0.11.8's checked-in design (`src/index.ts:379`), the OpenClaw `/model` picker is whitelisted by `cfg.agents.defaults.models` — that's the canonical filter. The path-based-plugin install case (where users install ClawRouter from a local checkout via `installPath = sourcePath = ...`) never runs `scripts/update.sh` / `scripts/reinstall.sh`, so the install-script prune-and-add never fires. `injectModelsConfig` in `src/index.ts` only added entries — never pruned — so retired models accumulated forever in the allowlist.

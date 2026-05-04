@@ -1045,13 +1045,13 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       primary: "google/gemini-2.5-flash", // 1,238ms, IQ 20, 60% retention (best) — fast AND quality
       fallback: [
         "google/gemini-3-flash-preview", // 1,398ms, IQ 46 — smarter fallback
-        "deepseek/deepseek-chat", // 1,431ms, IQ 32, 41% retention
+        "deepseek/deepseek-chat", // V4 Flash chat ($0.20/$0.40, 1M ctx) — repriced 2026-04-24
         "moonshot/kimi-k2.5", // 1,646ms, IQ 47, strong quality
         "google/gemini-3.1-flash-lite", // $0.25/$1.50, 1M context — newest flash-lite
         "google/gemini-2.5-flash-lite", // 1,353ms, $0.10/$0.40
         "openai/gpt-5.4-nano", // $0.20/$1.25, 1M context
         "xai/grok-4-fast-non-reasoning", // 1,143ms, $0.20/$0.50 — fast fallback
-        "free/gpt-oss-120b", // 1,252ms, FREE fallback
+        "free/gpt-oss-120b", // 1,252ms, FREE fallback (hidden from /v1/models but direct calls work)
       ],
     },
     MEDIUM: {
@@ -1085,7 +1085,8 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
       primary: "xai/grok-4-1-fast-reasoning", // 1,454ms, $0.20/$0.50
       fallback: [
         "xai/grok-4-fast-reasoning", // 1,298ms, $0.20/$0.50
-        "deepseek/deepseek-reasoner", // 1,454ms, cheap reasoning
+        "deepseek/deepseek-reasoner", // V4 Flash thinking ($0.20/$0.40, 1M ctx)
+        "deepseek/deepseek-v4-pro", // V4 Pro flagship ($0.50/$1.00 promo through 2026-05-31, list $2/$4) — strongest open-weight reasoner
         "openai/o4-mini", // 2,328ms ($1.10/$4.40)
         "openai/o3", // 2,862ms
       ],
@@ -1127,7 +1128,11 @@ export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
     },
     REASONING: {
       primary: "xai/grok-4-1-fast-reasoning", // $0.20/$0.50
-      fallback: ["xai/grok-4-fast-reasoning", "deepseek/deepseek-reasoner"],
+      fallback: [
+        "xai/grok-4-fast-reasoning",
+        "deepseek/deepseek-reasoner", // V4 Flash thinking — $0.20/$0.40
+        "deepseek/deepseek-v4-pro", // V4 Pro flagship — $0.50/$1.00 promo, post-promo $2/$4
+      ],
     },
   },
 

@@ -57683,6 +57683,59 @@ var init_client = __esm({
   }
 });
 
+// src/top-models.json
+var top_models_default = [
+  "auto",
+  "free",
+  "eco",
+  "premium",
+  "anthropic/claude-sonnet-4.6",
+  "anthropic/claude-opus-4.7",
+  "anthropic/claude-opus-4.6",
+  "anthropic/claude-haiku-4.5",
+  "openai/gpt-5.5",
+  "openai/gpt-5.4",
+  "openai/gpt-5.4-mini",
+  "openai/gpt-5.4-pro",
+  "openai/gpt-5.3-codex",
+  "openai/gpt-5.4-nano",
+  "google/gemini-3.1-pro",
+  "google/gemini-3.1-flash-lite",
+  "google/gemini-3-pro-preview",
+  "google/gemini-3-flash-preview",
+  "deepseek/deepseek-v4-pro",
+  "deepseek/deepseek-chat",
+  "deepseek/deepseek-reasoner",
+  "moonshot/kimi-k2.6",
+  "xai/grok-3",
+  "xai/grok-4-0709",
+  "xai/grok-4-1-fast-reasoning",
+  "minimax/minimax-m2.7",
+  "free/gpt-oss-120b",
+  "free/gpt-oss-20b",
+  "free/mistral-small-4-119b",
+  "free/deepseek-v4-pro",
+  "free/deepseek-v4-flash",
+  "free/qwen3-next-80b-a3b-thinking",
+  "free/qwen3-coder-480b",
+  "free/glm-4.7",
+  "free/llama-4-maverick",
+  "free/nemotron-3-nano-omni-30b-a3b-reasoning",
+  "zai/glm-5.1",
+  "zai/glm-5",
+  "zai/glm-5-turbo"
+];
+
+// src/top-models.ts
+function loadTopModels() {
+  const parsed = top_models_default;
+  if (!Array.isArray(parsed) || parsed.some((value) => typeof value !== "string" || !value.trim())) {
+    throw new Error("top-models.json must be a JSON array of non-empty strings");
+  }
+  return [...parsed];
+}
+var TOP_MODELS = Object.freeze(loadTopModels());
+
 // src/models.ts
 var MODEL_ALIASES = {
   // Claude - flagship opus is 4.7; sonnet stays at 4.6
@@ -58718,11 +58771,15 @@ var OPENCLAW_MODELS = [
   ...BLOCKRUN_MODELS.map(toOpenClawModel),
   ...ALIAS_MODELS
 ];
+var TOP_MODELS_SET = new Set(TOP_MODELS);
+var VISIBLE_OPENCLAW_MODELS = OPENCLAW_MODELS.filter(
+  (m) => TOP_MODELS_SET.has(m.id)
+);
 function buildProviderModels(baseUrl) {
   return {
     baseUrl: `${baseUrl}/v1`,
     api: "openai-completions",
-    models: OPENCLAW_MODELS
+    models: VISIBLE_OPENCLAW_MODELS
   };
 }
 function isAgenticModel(modelId) {
@@ -74050,7 +74107,7 @@ var DEFAULT_ROUTING_CONFIG = {
         "google/gemini-3-flash-preview",
         // 1,398ms, IQ 46 — smarter fallback
         "deepseek/deepseek-chat",
-        // 1,431ms, IQ 32, 41% retention
+        // V4 Flash chat ($0.20/$0.40, 1M ctx) — repriced 2026-04-24
         "moonshot/kimi-k2.5",
         // 1,646ms, IQ 47, strong quality
         "google/gemini-3.1-flash-lite",
@@ -74062,13 +74119,15 @@ var DEFAULT_ROUTING_CONFIG = {
         "xai/grok-4-fast-non-reasoning",
         // 1,143ms, $0.20/$0.50 — fast fallback
         "free/gpt-oss-120b"
-        // 1,252ms, FREE fallback
+        // 1,252ms, FREE fallback (hidden from /v1/models but direct calls work)
       ]
     },
     MEDIUM: {
-      primary: "moonshot/kimi-k2.5",
-      // 1,646ms, IQ 47, $0.60/$3.00 — strong tool use, quality output
+      primary: "moonshot/kimi-k2.6",
+      // $0.95/$4.00, 256K ctx, vision + reasoning — Moonshot flagship; promoted from K2.5 (2026-05-02) after BlockRun hid K2.5 from its UI on 2026-04-28
       fallback: [
+        "moonshot/kimi-k2.5",
+        // $0.60/$3.00 — graceful-degradation backstop while K2.6 stabilizes
         "google/gemini-3-flash-preview",
         // 1,398ms, IQ 46 — nearly same IQ, faster + cheaper
         "deepseek/deepseek-chat",
@@ -74116,7 +74175,9 @@ var DEFAULT_ROUTING_CONFIG = {
         "xai/grok-4-fast-reasoning",
         // 1,298ms, $0.20/$0.50
         "deepseek/deepseek-reasoner",
-        // 1,454ms, cheap reasoning
+        // V4 Flash thinking ($0.20/$0.40, 1M ctx)
+        "deepseek/deepseek-v4-pro",
+        // V4 Pro flagship ($0.50/$1.00 promo through 2026-05-31, list $2/$4) — strongest open-weight reasoner
         "openai/o4-mini",
         // 2,328ms ($1.10/$4.40)
         "openai/o3"
@@ -74173,7 +74234,13 @@ var DEFAULT_ROUTING_CONFIG = {
     REASONING: {
       primary: "xai/grok-4-1-fast-reasoning",
       // $0.20/$0.50
-      fallback: ["xai/grok-4-fast-reasoning", "deepseek/deepseek-reasoner"]
+      fallback: [
+        "xai/grok-4-fast-reasoning",
+        "deepseek/deepseek-reasoner",
+        // V4 Flash thinking — $0.20/$0.40
+        "deepseek/deepseek-v4-pro"
+        // V4 Pro flagship — $0.50/$1.00 promo, post-promo $2/$4
+      ]
     }
   },
   // Premium tier configs - best quality (blockrun/premium)
@@ -74265,9 +74332,11 @@ var DEFAULT_ROUTING_CONFIG = {
       ]
     },
     MEDIUM: {
-      primary: "moonshot/kimi-k2.5",
-      // 1,646ms, $0.60/$3.00 - strong tool use, proper function calls
+      primary: "moonshot/kimi-k2.6",
+      // $0.95/$4.00 — Moonshot flagship, strong tool use; promoted from K2.5 (2026-05-02) after BlockRun hid K2.5 from its UI on 2026-04-28
       fallback: [
+        "moonshot/kimi-k2.5",
+        // $0.60/$3.00 — graceful-degradation backstop while K2.6 stabilizes
         "xai/grok-4-1-fast-non-reasoning",
         // 1,244ms, fast fallback
         "openai/gpt-4o-mini",
@@ -77885,7 +77954,7 @@ async function startProxy(options) {
             body: reqBody
           });
           const text = await upstream.text();
-          if (!upstream.ok) {
+          if (!upstream.ok && upstream.status !== 202) {
             res.writeHead(upstream.status, { "Content-Type": "application/json" });
             res.end(text);
             return;
@@ -77897,6 +77966,68 @@ async function startProxy(options) {
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(text);
             return;
+          }
+          if (result.poll_url && result.id && !result.data?.length) {
+            const apiOrigin = new URL(apiBase).origin;
+            const pollUrl = result.poll_url.startsWith("http") ? result.poll_url : `${apiOrigin}${result.poll_url}`;
+            console.log(
+              `[ClawRouter] Image job submitted (id=${result.id}), polling upstream \u2014 typical 30\u2013120s...`
+            );
+            const pollDeadline = Date.now() + 3e5;
+            const pollInterval = 3e3;
+            await new Promise((r) => setTimeout(r, 2e3));
+            let pollError;
+            let completed = false;
+            while (Date.now() < pollDeadline) {
+              const pollResp = await payFetch(pollUrl, {
+                method: "GET",
+                headers: { "user-agent": USER_AGENT }
+              });
+              const pollText = await pollResp.text();
+              let pollBody = {};
+              try {
+                pollBody = JSON.parse(pollText);
+              } catch {
+                pollError = `Non-JSON poll response (${pollResp.status}): ${pollText.slice(0, 200)}`;
+                break;
+              }
+              if (pollResp.status === 202 || pollBody.status === "queued" || pollBody.status === "in_progress") {
+                await new Promise((r) => setTimeout(r, pollInterval));
+                continue;
+              }
+              if (pollBody.status === "failed") {
+                pollError = pollBody.error ?? "Upstream image generation failed";
+                break;
+              }
+              if (pollResp.ok && pollBody.status === "completed") {
+                result = pollBody;
+                completed = true;
+                break;
+              }
+              if (!pollResp.ok) {
+                res.writeHead(pollResp.status, { "Content-Type": "application/json" });
+                res.end(pollText);
+                return;
+              }
+              result = pollBody;
+              completed = true;
+              break;
+            }
+            if (pollError) {
+              res.writeHead(502, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "Image generation failed", details: pollError }));
+              return;
+            }
+            if (!completed) {
+              res.writeHead(504, { "Content-Type": "application/json" });
+              res.end(
+                JSON.stringify({
+                  error: "Image generation timed out",
+                  details: `Upstream did not complete within 5 minutes (job id=${result.id}). No payment has been settled.`
+                })
+              );
+              return;
+            }
           }
           if (result.data?.length) {
             await mkdir3(IMAGE_DIR, { recursive: true });
@@ -80773,72 +80904,6 @@ import {
   renameSync
 } from "fs";
 import { readFile as readFileAsync } from "fs/promises";
-
-// src/top-models.json
-var top_models_default = [
-  "auto",
-  "free",
-  "eco",
-  "premium",
-  "anthropic/claude-sonnet-4.6",
-  "anthropic/claude-opus-4.7",
-  "anthropic/claude-opus-4.6",
-  "anthropic/claude-opus-4.5",
-  "anthropic/claude-haiku-4.5",
-  "openai/gpt-5.5",
-  "openai/gpt-5.4",
-  "openai/gpt-5.4-mini",
-  "openai/gpt-5.4-pro",
-  "openai/gpt-5.3",
-  "openai/gpt-5.3-codex",
-  "openai/gpt-5-mini",
-  "openai/gpt-5-nano",
-  "openai/gpt-5.4-nano",
-  "openai/gpt-4o",
-  "openai/gpt-4o-mini",
-  "openai/o3",
-  "openai/o4-mini",
-  "google/gemini-3.1-pro",
-  "google/gemini-3.1-flash-lite",
-  "google/gemini-3-pro-preview",
-  "google/gemini-3-flash-preview",
-  "google/gemini-2.5-pro",
-  "google/gemini-2.5-flash",
-  "google/gemini-2.5-flash-lite",
-  "deepseek/deepseek-chat",
-  "deepseek/deepseek-reasoner",
-  "moonshot/kimi-k2.6",
-  "moonshot/kimi-k2.5",
-  "xai/grok-3",
-  "xai/grok-4-0709",
-  "xai/grok-4-1-fast-reasoning",
-  "minimax/minimax-m2.7",
-  "free/gpt-oss-120b",
-  "free/gpt-oss-20b",
-  "free/mistral-small-4-119b",
-  "free/deepseek-v4-pro",
-  "free/deepseek-v4-flash",
-  "free/qwen3-next-80b-a3b-thinking",
-  "free/qwen3-coder-480b",
-  "free/glm-4.7",
-  "free/llama-4-maverick",
-  "free/nemotron-3-nano-omni-30b-a3b-reasoning",
-  "zai/glm-5.1",
-  "zai/glm-5",
-  "zai/glm-5-turbo"
-];
-
-// src/top-models.ts
-function loadTopModels() {
-  const parsed = top_models_default;
-  if (!Array.isArray(parsed) || parsed.some((value) => typeof value !== "string" || !value.trim())) {
-    throw new Error("top-models.json must be a JSON array of non-empty strings");
-  }
-  return [...parsed];
-}
-var TOP_MODELS = Object.freeze(loadTopModels());
-
-// src/index.ts
 import { homedir as homedir7 } from "os";
 import { join as join10, dirname as dirname3 } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
@@ -82053,7 +82118,7 @@ function injectModelsConfig(logger) {
       // apiKey is required by pi-coding-agent's ModelRegistry for providers with models.
       // We use a placeholder since the proxy handles real x402 auth internally.
       apiKey: "x402-proxy-handles-auth",
-      models: OPENCLAW_MODELS
+      models: VISIBLE_OPENCLAW_MODELS
     };
     logger.info("Injected BlockRun provider config");
     needsWrite = true;
@@ -82074,14 +82139,15 @@ function injectModelsConfig(logger) {
     }
     const currentModels = blockrun.models;
     const currentModelIds = new Set(
-      Array.isArray(currentModels) ? currentModels.map((m) => m?.id).filter(Boolean) : []
+      Array.isArray(currentModels) ? currentModels.map((m) => m?.id).filter((id) => typeof id === "string") : []
     );
-    const expectedModelIds = OPENCLAW_MODELS.map((m) => m.id);
-    const needsModelUpdate = !currentModels || !Array.isArray(currentModels) || currentModels.length !== OPENCLAW_MODELS.length || expectedModelIds.some((id) => !currentModelIds.has(id));
+    const expectedModelIds = VISIBLE_OPENCLAW_MODELS.map((m) => m.id);
+    const expectedSet = new Set(expectedModelIds);
+    const needsModelUpdate = !currentModels || !Array.isArray(currentModels) || currentModels.length !== VISIBLE_OPENCLAW_MODELS.length || expectedModelIds.some((id) => !currentModelIds.has(id)) || Array.from(currentModelIds).some((id) => !expectedSet.has(id));
     if (needsModelUpdate) {
-      blockrun.models = OPENCLAW_MODELS;
+      blockrun.models = VISIBLE_OPENCLAW_MODELS;
       fixed = true;
-      logger.info(`Updated models list (${OPENCLAW_MODELS.length} models)`);
+      logger.info(`Updated models list (${VISIBLE_OPENCLAW_MODELS.length} visible models)`);
     }
     if (fixed) {
       logger.info("Fixed incomplete BlockRun provider config");
@@ -82126,7 +82192,15 @@ function injectModelsConfig(logger) {
     needsWrite = true;
     logger.info(`Removed ${removedDeprecatedCount} deprecated model entries from allowlist`);
   }
+  const expectedBlockrunKeys = new Set(TOP_MODELS.map((id) => `blockrun/${id}`));
   let addedCount = 0;
+  let prunedCount = 0;
+  for (const key of Object.keys(allowlist)) {
+    if (key.startsWith("blockrun/") && !expectedBlockrunKeys.has(key)) {
+      delete allowlist[key];
+      prunedCount++;
+    }
+  }
   for (const id of TOP_MODELS) {
     const key = `blockrun/${id}`;
     if (!allowlist[key]) {
@@ -82134,9 +82208,14 @@ function injectModelsConfig(logger) {
       addedCount++;
     }
   }
-  if (addedCount > 0) {
+  if (addedCount > 0 || prunedCount > 0) {
     needsWrite = true;
-    logger.info(`Added ${addedCount} models to allowlist (${TOP_MODELS.length} total)`);
+    if (prunedCount > 0) {
+      logger.info(`Pruned ${prunedCount} stale blockrun/* entries from allowlist`);
+    }
+    if (addedCount > 0) {
+      logger.info(`Added ${addedCount} models to allowlist (${TOP_MODELS.length} total)`);
+    }
   }
   if (!config.tools || typeof config.tools !== "object" || Array.isArray(config.tools)) {
     config.tools = {};
@@ -83035,7 +83114,7 @@ var plugin = {
       api: "openai-completions",
       // apiKey is required by pi-coding-agent's ModelRegistry for providers with models.
       apiKey: "x402-proxy-handles-auth",
-      models: OPENCLAW_MODELS
+      models: VISIBLE_OPENCLAW_MODELS
     };
     if (!api.config.tools) {
       api.config.tools = {};

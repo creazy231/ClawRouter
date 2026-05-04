@@ -111,7 +111,10 @@ const ROUTING_PROFILES = new Set([
   "premium",
 ]);
 // Default free model first (auto-pick order). gpt-oss-120b is the historical
-// default — heavy users rely on it. New entries appended in chain order.
+// default — heavy users rely on it. Pulled from /v1/models 2026-04-28 over
+// privacy concerns, then re-enabled with `available: true` 2026-04-30 so
+// direct callers (ClawRouter using the full ID) still get HTTP 200; only
+// the public picker hides them. New entries appended in chain order.
 const FREE_MODELS = new Set([
   "free/gpt-oss-120b",
   "free/gpt-oss-20b",
@@ -2092,18 +2095,27 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
           /* use defaults */
         }
         try {
+          // Step 1: submit job. Fast models return 200 + image data inline within
+          // BlockRun's 30s window. Slow models (e.g. openai/gpt-image-2) return
+          // 202 + { id, poll_url } and we poll below — same pattern as video.
           const upstream = await payFetch(`${apiBase}/v1/images/generations`, {
             method: "POST",
             headers: { "content-type": "application/json", "user-agent": USER_AGENT },
             body: reqBody,
           });
           const text = await upstream.text();
-          if (!upstream.ok) {
+          if (!upstream.ok && upstream.status !== 202) {
             res.writeHead(upstream.status, { "Content-Type": "application/json" });
             res.end(text);
             return;
           }
-          let result: { created?: number; data?: Array<{ url?: string; revised_prompt?: string }> };
+          let result: {
+            created?: number;
+            data?: Array<{ url?: string; revised_prompt?: string }>;
+            id?: string;
+            poll_url?: string;
+            status?: string;
+          };
           try {
             result = JSON.parse(text);
           } catch {
@@ -2111,8 +2123,84 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
             res.end(text);
             return;
           }
-          // Save images to ~/.openclaw/blockrun/images/ and replace with localhost URLs
-          // Handles both base64 data URIs (Google) and HTTP URLs (DALL-E 3)
+
+          // Step 2: slow path — BlockRun returned 202 + poll_url (slow model > 30s
+          // inline window). Poll upstream until completed; client sees a single
+          // blocking POST. Mirrors the video polling loop below.
+          if (result.poll_url && result.id && !result.data?.length) {
+            const apiOrigin = new URL(apiBase).origin;
+            const pollUrl = result.poll_url.startsWith("http")
+              ? result.poll_url
+              : `${apiOrigin}${result.poll_url}`;
+            console.log(
+              `[ClawRouter] Image job submitted (id=${result.id}), polling upstream — typical 30–120s...`,
+            );
+            // Poll every 3s, bail after ~5min total. Server auth window is 10min.
+            const pollDeadline = Date.now() + 300_000;
+            const pollInterval = 3_000;
+            // Small initial delay so upstream has a chance to make progress.
+            await new Promise((r) => setTimeout(r, 2_000));
+            let pollError: string | undefined;
+            let completed = false;
+            while (Date.now() < pollDeadline) {
+              const pollResp = await payFetch(pollUrl, {
+                method: "GET",
+                headers: { "user-agent": USER_AGENT },
+              });
+              const pollText = await pollResp.text();
+              let pollBody: typeof result & { error?: string } = {};
+              try {
+                pollBody = JSON.parse(pollText);
+              } catch {
+                pollError = `Non-JSON poll response (${pollResp.status}): ${pollText.slice(0, 200)}`;
+                break;
+              }
+              if (
+                pollResp.status === 202 ||
+                pollBody.status === "queued" ||
+                pollBody.status === "in_progress"
+              ) {
+                await new Promise((r) => setTimeout(r, pollInterval));
+                continue;
+              }
+              if (pollBody.status === "failed") {
+                pollError = pollBody.error ?? "Upstream image generation failed";
+                break;
+              }
+              if (pollResp.ok && pollBody.status === "completed") {
+                result = pollBody;
+                completed = true;
+                break;
+              }
+              if (!pollResp.ok) {
+                res.writeHead(pollResp.status, { "Content-Type": "application/json" });
+                res.end(pollText);
+                return;
+              }
+              // OK but no recognized status — hand through.
+              result = pollBody;
+              completed = true;
+              break;
+            }
+            if (pollError) {
+              res.writeHead(502, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "Image generation failed", details: pollError }));
+              return;
+            }
+            if (!completed) {
+              res.writeHead(504, { "Content-Type": "application/json" });
+              res.end(
+                JSON.stringify({
+                  error: "Image generation timed out",
+                  details: `Upstream did not complete within 5 minutes (job id=${result.id}). No payment has been settled.`,
+                }),
+              );
+              return;
+            }
+          }
+
+          // Step 3: save images to ~/.openclaw/blockrun/images/ and replace with localhost URLs
+          // Handles both base64 data URIs (Google) and HTTP URLs (DALL-E 3, gpt-image-2)
           if (result.data?.length) {
             await mkdir(IMAGE_DIR, { recursive: true });
             const port = (server.address() as AddressInfo | null)?.port ?? 8402;
