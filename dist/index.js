@@ -1270,6 +1270,14 @@ var init_models = __esm({
         id: "google/gemini-3.8-flash",
         name: "Gemini 3.8 Flash",
         version: "3.8",
+        // ⏰ PROMOTIONAL RATE, expires 2027-01-01. Google prices the whole 3.6/3.7/3.8
+        // Flash band at 0.75/3.75 only through 2026-12-31, reverting to 1.50/7.50
+        // (ai.google.dev/gemini-api/docs/pricing; blockrun's src/lib/models.ts carries
+        // the same dated note). These numbers are not decoration here: calculateModelCost
+        // feeds the maxCostPerRun projection and every `cost` in the usage journal, so
+        // leaving them at the promo rate past the reversion under-reports spend 2x and
+        // lets the cap run to twice its stated limit. Re-price this AND gemini-3.6-flash
+        // together — they revert on the same day.
         inputPrice: 0.75,
         outputPrice: 3.75,
         contextWindow: 1048576,
@@ -1281,6 +1289,8 @@ var init_models = __esm({
       {
         // Newest-generation Flash with built-in thinking mode (blockrun #329,
         // 2026-08-03). 17% cheaper output than 3.5 Flash.
+        // ⏰ Same promotional 0.75/3.75 as gemini-3.8-flash above, and the same
+        // 2027-01-01 reversion to 1.50/7.50 — re-price both together.
         id: "google/gemini-3.6-flash",
         name: "Gemini 3.6 Flash",
         version: "3.6",
