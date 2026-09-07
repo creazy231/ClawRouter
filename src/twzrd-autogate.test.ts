@@ -7,6 +7,7 @@ import {
   twzrdAutoGateInstallOptions,
   type BeforePaymentCreationContext,
   type BeforePaymentCreationResult,
+  type TwzrdGateInstallOptions,
   type X402ClientLike,
 } from "./twzrd-autogate.js";
 import { VERSION } from "./version.js";
@@ -124,7 +125,8 @@ describe("maybeComposeTwzrdAutoGate", () => {
     client.onBeforePaymentCreation(spendHook);
 
     let invoked = 0;
-    const installTwzrdAutoGate = vi.fn((x402: X402ClientLike) => {
+    const installTwzrdAutoGate = vi.fn((x402: X402ClientLike, opts?: TwzrdGateInstallOptions) => {
+      expect(opts?.attribution.integration).toBe(`clawrouter/${VERSION}`);
       x402.onBeforePaymentCreation(async () => {
         invoked += 1;
       });
@@ -145,9 +147,6 @@ describe("maybeComposeTwzrdAutoGate", () => {
       selectedRequirements: { payTo: "Seller1111111111111111111111111111111111111" },
     });
     expect(invoked).toBe(1);
-    expect(installTwzrdAutoGate.mock.calls[0]?.[1]?.attribution.integration).toBe(
-      `clawrouter/${VERSION}`,
-    );
   });
 
   it("falls back to createTwzrdBeforePaymentHook and invokes it", async () => {
