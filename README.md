@@ -540,7 +540,8 @@ No Surf account, no API key — settles directly to Surf's Base treasury in USDC
 | zai/glm-5.1                 |     $1.40 |      $4.40 |    $0.0029 | 200K    | reasoning, tools (promo ended 2026-06-05) |
 | qwen/qwen3.7-max            |    $1.475 |     $4.425 |    $0.0030 | 1M      | reasoning, agentic, tools (Qwen flagship) |
 | xai/grok-4.3                |     $1.25 |      $2.50 |    $0.0019 | 1M      | reasoning, vision, agentic, tools         |
-| google/gemini-3.6-flash     |     $0.75 |      $3.75 |    $0.0023 | 1M      | reasoning, vision, tools (newest Flash)   |
+| google/gemini-3.8-flash     |     $0.75 |      $3.75 |    $0.0023 | 1M      | reasoning, vision, tools (newest Flash)   |
+| google/gemini-3.6-flash     |     $0.75 |      $3.75 |    $0.0023 | 1M      | reasoning, vision, tools (thinking mode)  |
 | google/gemini-3.5-flash     |     $1.50 |      $9.00 |    $0.0053 | 1M      | reasoning, vision, tools (thinking)       |
 | xai/grok-4.5                |     $2.00 |      $6.00 |    $0.0040 | 500K    | reasoning, vision, agentic, tools         |
 | xai/grok-build-0.1          |     $1.00 |      $2.00 |    $0.0015 | 256K    | agentic coding, tools                     |

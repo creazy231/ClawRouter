@@ -4,6 +4,20 @@ All notable changes to ClawRouter.
 
 ---
 
+## v0.12.276 — September 6, 2026
+
+### Fixed — Gemini 3.8 Flash was routable but uncatalogued, which is a cost-cap hole
+
+`google/gemini-3.8-flash` has been live in the BlockRun catalog (chat, reasoning, coding, vision; $0.75/$3.75, 1M context) while `src/models.ts` carried no entry for it. Anything that pins it by id reached the gateway and got an answer, so it looked healthy — but `estimateAmount()` returns `undefined` for an id this catalog does not carry, and three guards read that as "free":
+
+- the pre-request balance check never runs, so an underfunded wallet gets an x402 failure mid-request instead of a fallback to a free model
+- strict `maxCostPerRun` projects `$0` for the request, so the cap cannot trip on it
+- session spend never accumulates, so the cap reads `$0.00` no matter how many of these calls have gone out
+
+This is the failure mode already documented on `zai/glm-5.3-flash`: an uncatalogued routing target is a cost-cap hole, not a logging gap. Surfaced by [ClawRouter-Hermes #40](https://github.com/BlockRunAI/ClawRouter-Hermes/pull/40), which pinned the model from the Hermes picker — the first curated picker entry this catalog did not carry.
+
+Added to `BLOCKRUN_MODELS`, to `src/top-models.json` above `gemini-3.6-flash` (Google runs descending after the pro) and to the README pricing table. No alias shorthands: `clawrouter.aliases` is published in the brand artifact and asserted here, so `gemini-3.8` / `gemini-3.8-flash` shorthands wait on that number moving upstream.
+
 ## v0.12.275 — September 5, 2026
 
 ### Added — a collision gate pinned to an OpenClaw version that actually collides
