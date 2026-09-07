@@ -37890,6 +37890,7 @@ var init_top_models = __esm({
       "openai/gpt-5.4-nano",
       "openai/gpt-5.3-codex",
       "google/gemini-3.1-pro",
+      "google/gemini-3.8-flash",
       "google/gemini-3.6-flash",
       "google/gemini-3.5-flash",
       "google/gemini-3.5-flash-lite",
@@ -39067,6 +39068,25 @@ var init_models = __esm({
         version: "3.0",
         inputPrice: 2,
         outputPrice: 12,
+        contextWindow: 1048576,
+        maxOutput: 65536,
+        reasoning: true,
+        vision: true,
+        toolCalling: true
+      },
+      {
+        // Current-generation Flash. Live in the BlockRun catalog (chat, reasoning,
+        // coding, vision; $0.75/$3.75) and pinned from the Hermes picker, so it
+        // MUST be carried here and not just be routable at the gateway:
+        // estimateAmount() returns undefined for an id we do not catalog, which
+        // skips the pre-request balance check, projects $0 into the strict
+        // maxCostPerRun gate and never accumulates into session cost. The gateway
+        // ships 3.8 with the same pricing, context and capability row as 3.6.
+        id: "google/gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
+        version: "3.8",
+        inputPrice: 0.75,
+        outputPrice: 3.75,
         contextWindow: 1048576,
         maxOutput: 65536,
         reasoning: true,
