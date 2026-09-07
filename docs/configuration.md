@@ -15,6 +15,7 @@ Complete reference for ClawRouter configuration options.
 - [Tier Overrides](#tier-overrides)
 - [Scoring Weights](#scoring-weights)
 - [Spend Control & Counterparty Policy](#spend-control--counterparty-policy)
+- [TWZRD AutoGate (opt-in)](#twzrd-autogate-opt-in)
 - [Testing Configuration](#testing-configuration)
 
 ---
@@ -32,6 +33,7 @@ Complete reference for ClawRouter configuration options.
 | `CLAWROUTER_WORKER`         | -                                     | Set to `1` to enable Worker Mode (earn USDC by running health checks).                                                                                      |
 | `CLAWROUTER_DEBUG_HEADERS`  | (on)                                  | Set to `off`/`false`/`0` to suppress the `x-clawrouter-*` debug response headers.                                                                           |
 | `BLOCKRUN_WEB_SEARCH`       | (auto-enabled)                        | Set to `off` to disable BlockRun's Exa web search provider registration.                                                                                    |
+| `TWZRD_AUTO_GATE`           | unset (off)                           | Set to `1` to compose TWZRD AutoGate after SpendControl on the x402 pre-sign hook. Also `TWZRD_GATE_ENABLED=true`.                                          |
 
 ---
 
@@ -729,6 +731,31 @@ retried against other models: a policy denial is a decision, not an outage.
 **Scope:** this governs payments made by the proxy. Local tools that sign with
 the same wallet outside the proxy's x402 client (Polymarket funding and order
 placement, `clawrouter doctor`'s probe) are not covered.
+
+---
+
+## TWZRD AutoGate (opt-in)
+
+Default **off**. This is not a re-open of default-on vendor lock. SpendControl
+above remains the vendor-neutral path; TWZRD is composed only when you ask.
+
+```bash
+export TWZRD_AUTO_GATE=1
+# equivalent:
+export TWZRD_GATE_ENABLED=true
+```
+
+When set, `startProxy` calls `installTwzrdAutoGate` / `createTwzrdBeforePaymentHook`
+on the **same** x402 client, **after** `registerSpendPolicyHook`. SpendControl
+lists still run first. A wash `payTo` is refused before `signTransaction`.
+
+- Optional dependency: `twzrd-x402-gate@0.9.3`. Forks that omit it still install.
+- Missing gate package (`MODULE_NOT_FOUND` for `twzrd-x402-gate` itself): fail
+  open — proxy boots, payments unguarded by TWZRD. Any other load/install error
+  fails closed.
+- Identity: preflight stamps `X-Twzrd-Caller: clawrouter/<version>` so a refuse
+  is attributable.
+- Unset the flag to return to SpendControl only.
 
 ---
 

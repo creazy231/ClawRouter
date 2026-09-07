@@ -767,8 +767,21 @@ For basic usage, no configuration needed. For advanced options:
 | `CLAWROUTER_DISABLED`       | `false`                               | Disable smart routing                                                                                                       |
 | `CLAWROUTER_DEBUG_HEADERS`  | `on`                                  | Set to `off` to suppress `x-clawrouter-*` debug response headers                                                            |
 | `CLAWROUTER_SOLANA_RPC_URL` | `https://api.mainnet-beta.solana.com` | Solana RPC endpoint — balance checks and payment signing                                                                    |
+| `TWZRD_AUTO_GATE`           | unset (off)                           | Set to `1` to compose TWZRD AutoGate after SpendControl on the x402 pre-sign hook                                           |
 
 **Full reference:** [docs/configuration.md](docs/configuration.md)
+
+### Pre-spend trust (TWZRD AutoGate, opt-in)
+
+Default **off**. Spend limits and counterparty lists (`clawrouter policy`) stay the vendor-neutral path. This is not a default-on vendor lock.
+
+To also run TWZRD wash/preflight on the same `onBeforePaymentCreation` chain — after SpendControl, before the wallet signs:
+
+```bash
+export TWZRD_AUTO_GATE=1
+```
+
+Equivalent flag: `TWZRD_GATE_ENABLED=true`. Requires optional dependency `twzrd-x402-gate@0.9.3` (forks that omit it still install). A refuse stamps `X-Twzrd-Caller: clawrouter/<version>` so it is attributable. Unset the flag to go back to SpendControl only.
 
 ### Model Exclusion
 
