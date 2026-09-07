@@ -4,7 +4,11 @@ import {
   isMissingTwzrdGateModule,
   isTwzrdAutoGateEnabled,
   maybeComposeTwzrdAutoGate,
+  runTwzrdGateWithTimeout,
   twzrdAutoGateInstallOptions,
+  twzrdGateFailOpen,
+  twzrdGateTimeoutMs,
+  TWZRD_GATE_TIMEOUT_MS,
   type BeforePaymentCreationContext,
   type BeforePaymentCreationResult,
   type TwzrdGateInstallOptions,
@@ -82,12 +86,102 @@ describe("isMissingTwzrdGateModule", () => {
 
 describe("twzrdAutoGateInstallOptions", () => {
   it("stamps clawrouter/<version> so a refuse is attributable", () => {
-    const opts = twzrdAutoGateInstallOptions(() => "run-1");
+    const opts = twzrdAutoGateInstallOptions({}, () => "run-1");
     expect(opts.attribution.integration).toBe(`clawrouter/${VERSION}`);
     expect(opts.attribution.runId).toBe("run-1");
     expect(opts.refuseWashFlagged).toBe(true);
     expect(opts.gateOnCanSpend).toBe(false);
     expect(opts.unsupportedNetworkMode).toBe("observe");
+  });
+
+  it("defaults to fail-open so a gate outage cannot stop payments", () => {
+    expect(twzrdAutoGateInstallOptions({}, () => "r").failOpen).toBe(true);
+    expect(twzrdGateFailOpen({})).toBe(true);
+  });
+
+  it("lets an operator opt back into refuse-on-outage", () => {
+    for (const v of ["0", "false", "no", "off", "OFF"]) {
+      expect(twzrdGateFailOpen({ TWZRD_FAIL_OPEN: v })).toBe(false);
+      expect(twzrdAutoGateInstallOptions({ TWZRD_FAIL_OPEN: v }, () => "r").failOpen).toBe(false);
+    }
+  });
+
+  it("bounds the answer, and ignores a nonsense budget", () => {
+    expect(twzrdGateTimeoutMs({})).toBe(TWZRD_GATE_TIMEOUT_MS);
+    expect(twzrdGateTimeoutMs({ TWZRD_GATE_TIMEOUT_MS: "50" })).toBe(50);
+    for (const bad of ["", "0", "-1", "abc"]) {
+      expect(twzrdGateTimeoutMs({ TWZRD_GATE_TIMEOUT_MS: bad })).toBe(TWZRD_GATE_TIMEOUT_MS);
+    }
+  });
+});
+
+describe("runTwzrdGateWithTimeout", () => {
+  const never = () => new Promise<BeforePaymentCreationResult>(() => {});
+
+  it("passes a verdict straight through when the gate answers in time", async () => {
+    const abort = { abort: true as const, reason: "wash" };
+    await expect(
+      runTwzrdGateWithTimeout(async () => abort, { timeoutMs: 500, failOpen: true }),
+    ).resolves.toEqual(abort);
+  });
+
+  it("proceeds when the gate hangs — SpendControl still applies", async () => {
+    const warn = vi.fn();
+    const out = await runTwzrdGateWithTimeout(never, {
+      timeoutMs: 10,
+      failOpen: true,
+      log: { log: vi.fn(), warn },
+    });
+    expect(out).toBeUndefined();
+    expect(warn.mock.calls[0]?.[0]).toContain("did not answer within 10ms");
+  });
+
+  it("refuses when the gate hangs under TWZRD_FAIL_OPEN=false", async () => {
+    const out = await runTwzrdGateWithTimeout(never, {
+      timeoutMs: 10,
+      failOpen: false,
+      log: { log: vi.fn(), warn: vi.fn() },
+    });
+    expect(out).toEqual({
+      abort: true,
+      reason: "twzrd gate did not answer within 10ms",
+    });
+  });
+
+  it("treats a throwing gate as a failure instead of propagating into x402", async () => {
+    const warn = vi.fn();
+    const out = await runTwzrdGateWithTimeout(
+      async () => {
+        throw new Error("intel.twzrd.xyz unreachable");
+      },
+      { timeoutMs: 500, failOpen: true, log: { log: vi.fn(), warn } },
+    );
+    expect(out).toBeUndefined();
+    expect(warn.mock.calls[0]?.[0]).toContain("intel.twzrd.xyz unreachable");
+
+    const refused = await runTwzrdGateWithTimeout(
+      async () => {
+        throw new Error("boom");
+      },
+      { timeoutMs: 500, failOpen: false, log: { log: vi.fn(), warn: vi.fn() } },
+    );
+    expect(refused).toEqual({ abort: true, reason: "twzrd gate threw: boom" });
+  });
+
+  it("does not leave a late rejection unhandled", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (err: unknown) => unhandled.push(err);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      await runTwzrdGateWithTimeout(
+        () => new Promise((_, reject) => setTimeout(() => reject(new Error("late")), 5)),
+        { timeoutMs: 1, failOpen: true, log: { log: vi.fn(), warn: vi.fn() } },
+      );
+      await new Promise((r) => setTimeout(r, 30));
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+    expect(unhandled).toEqual([]);
   });
 });
 
@@ -149,7 +243,7 @@ describe("maybeComposeTwzrdAutoGate", () => {
     expect(invoked).toBe(1);
   });
 
-  it("falls back to createTwzrdBeforePaymentHook and invokes it", async () => {
+  it("registers createTwzrdBeforePaymentHook itself and invokes it", async () => {
     const { client, hooks } = fakeClient();
     const seen: unknown[] = [];
     const createTwzrdBeforePaymentHook = vi.fn(() => {
@@ -169,6 +263,60 @@ describe("maybeComposeTwzrdAutoGate", () => {
     const abort = await hooks[0]!({ selectedRequirements: { payTo: "wash" } });
     expect(abort).toEqual({ abort: true, reason: "wash" });
     expect(seen).toEqual([{ payTo: "wash" }]);
+  });
+
+  it("prefers the hook factory over installTwzrdAutoGate, which replaces our registrar", async () => {
+    // installTwzrdAutoGate monkey-patches client.onBeforePaymentCreation, so
+    // every hook registered after it inherits a third-party kill switch. When
+    // the gate offers both entry points we must take the one that does not.
+    const { client } = fakeClient();
+    const installTwzrdAutoGate = vi.fn();
+    const createTwzrdBeforePaymentHook = vi.fn(() => async () => undefined);
+
+    const result = await maybeComposeTwzrdAutoGate(client, {
+      env: { TWZRD_AUTO_GATE: "1" },
+      loadGate: async () => ({ installTwzrdAutoGate, createTwzrdBeforePaymentHook }),
+      log: { log: vi.fn(), warn: vi.fn() },
+    });
+
+    expect(result).toEqual({ status: "composed", via: "createTwzrdBeforePaymentHook" });
+    expect(installTwzrdAutoGate).not.toHaveBeenCalled();
+  });
+
+  it("time-boxes the composed hook so a hung gate cannot stall a payment", async () => {
+    const { client, hooks } = fakeClient();
+    const warn = vi.fn();
+
+    await maybeComposeTwzrdAutoGate(client, {
+      env: { TWZRD_AUTO_GATE: "1", TWZRD_GATE_TIMEOUT_MS: "10" },
+      loadGate: async () => ({
+        createTwzrdBeforePaymentHook: () => () =>
+          new Promise<BeforePaymentCreationResult>(() => {}),
+      }),
+      log: { log: vi.fn(), warn },
+    });
+
+    const started = Date.now();
+    const out = await hooks[0]!({ selectedRequirements: { payTo: "Seller111" } });
+    expect(out).toBeUndefined();
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(warn.mock.calls[0]?.[0]).toContain("did not answer within 10ms");
+  });
+
+  it("refuses a hung gate when the operator asked for fail-closed", async () => {
+    const { client, hooks } = fakeClient();
+
+    await maybeComposeTwzrdAutoGate(client, {
+      env: { TWZRD_AUTO_GATE: "1", TWZRD_GATE_TIMEOUT_MS: "10", TWZRD_FAIL_OPEN: "false" },
+      loadGate: async () => ({
+        createTwzrdBeforePaymentHook: () => () =>
+          new Promise<BeforePaymentCreationResult>(() => {}),
+      }),
+      log: { log: vi.fn(), warn: vi.fn() },
+    });
+
+    const out = await hooks[0]!({ selectedRequirements: { payTo: "Seller111" } });
+    expect(out).toEqual({ abort: true, reason: "twzrd gate did not answer within 10ms" });
   });
 
   it("fails open only when twzrd-x402-gate itself is missing", async () => {
