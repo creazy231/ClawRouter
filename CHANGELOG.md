@@ -4,6 +4,49 @@ All notable changes to ClawRouter.
 
 ---
 
+## v0.12.278 — September 7, 2026
+
+### Removed — TWZRD AutoGate, and the optional dependency behind it
+
+`src/twzrd-autogate.ts`, the `twzrd-x402-gate` optionalDependency, the
+`TWZRD_AUTO_GATE` / `TWZRD_GATE_ENABLED` / `TWZRD_GATE_TIMEOUT_MS` /
+`TWZRD_FAIL_OPEN` flags and their docs are gone. `clawrouter policy`
+(SpendControl) is the pre-spend control ClawRouter ships, and the x402
+pre-sign path carries no third-party vendor.
+
+The evidence for removing it came from the vendor's own follow-up
+([#360](https://github.com/BlockRunAI/ClawRouter/pull/360), closed), which
+verified `0.9.4` against the installed package rather than the docs:
+
+**The engine changed under a patch bump.** `0.9.3` ran the full
+`/v1/intel/preflight` the v0.12.277 notes described. In `0.9.4` the same
+`createTwzrdBeforePaymentHook` call became a wash-only `GET merchant_card/{payTo}`
+against a different endpoint, on Solana and Base alike, with a different refusal
+set — no code change on our side. A dependency that redefines what it does
+inside `onBeforePaymentCreation` on a patch release cannot sit there.
+
+**Our failure config was never honoured.** The package converts a fast lookup
+failure — `503`, `404`, `fetch failed`, invalid JSON, its own 3s timeout — into
+allow internally, and ignores the `failOpen` we pass. `TWZRD_FAIL_OPEN=false`
+therefore meant "refuse on hang", not "refuse on outage", for the whole life of
+the feature. The flag documented a guarantee the package would not give.
+
+**Unknown became a refusal.** `wash_flagged: false` with missing, partial or
+stale coverage aborts as `twzrd_wash_unknown`. A recipient nobody has scored
+yet stops a payment.
+
+**Every lookup was attributed.** `X-Twzrd-Caller`, `X-TWZRD-Integration`,
+`X-TWZRD-Client` and a per-process run id went out with each call, from inside
+the code path that signs with the user's wallet.
+
+`0.9.3` remains uninstalled either way: `0.10.0` / `0.10.1` are deprecated
+upstream as unreproducible, and the gate's whole surface was opt-in and
+default-off, so nothing that worked before this release stops working. Anyone
+who had `TWZRD_AUTO_GATE=1` set now falls back to SpendControl alone, which was
+always the guarantee.
+
+---
+
 ## v0.12.277 — September 6, 2026
 
 ### Added — opt-in TWZRD AutoGate on the x402 pre-sign hook

@@ -103,7 +103,6 @@ import {
   SpendControl,
   SpendPolicyError,
 } from "./spend-control.js";
-import { maybeComposeTwzrdAutoGate } from "./twzrd-autogate.js";
 import { compressContext, shouldCompress, type NormalizedMessage } from "./compression/index.js";
 // Balance error classes are available for programmatic use but not used in the
 // proxy (universal free fallback means we don't throw balance errors anymore):
@@ -2798,8 +2797,6 @@ export async function startProxy(options: ProxyOptions): Promise<ProxyHandle> {
     const evmSigner = toClientEvmSigner(account, evmPublicClient);
     const spendControl = options.spendControl ?? getSharedSpendControl();
     registerSpendPolicyHook(x402, spendControl);
-    // Opt-in only (TWZRD_AUTO_GATE=1). Default off — does not replace SpendControl.
-    await maybeComposeTwzrdAutoGate(x402);
     registerExactEvmScheme(x402, { signer: evmSigner });
   }
 
