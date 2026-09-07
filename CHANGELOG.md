@@ -4,6 +4,32 @@ All notable changes to ClawRouter.
 
 ---
 
+## v0.12.277 — September 6, 2026
+
+### Added — opt-in TWZRD AutoGate on the x402 pre-sign hook
+
+Default **off**. `clawrouter policy` (SpendControl) stays the vendor-neutral path and is untouched by any of this. `TWZRD_AUTO_GATE=1` (or `TWZRD_GATE_ENABLED=true`) composes TWZRD's trust check onto the same `onBeforePaymentCreation` chain, after SpendControl. From [#357](https://github.com/BlockRunAI/ClawRouter/pull/357) by [@twzrd-sol](https://github.com/twzrd-sol), which closes [#355](https://github.com/BlockRunAI/ClawRouter/issues/355) and is deliberately not a re-open of the withdrawn default-on [#218](https://github.com/BlockRunAI/ClawRouter/pull/218).
+
+Review changed three things about it before it landed.
+
+**A third party must not be able to stop your payments.** The gate's preflight is a synchronous POST to `intel.twzrd.xyz` that sets no timeout of its own, and the package defaults to `failOpen: false` — so an outage there refused _every_ paid Solana call. That is precisely the shape of the v0.12.271 outage, where an unreachable third party turned every Solana payment into a bare `fetch failed` and looked exactly like a gateway fault. The gate is additional cover on top of SpendControl, so we pass `failOpen: true` and bound the answer at `TWZRD_GATE_TIMEOUT_MS` (default 2000ms). A timeout, a rejection or an outage logs why and proceeds; `TWZRD_FAIL_OPEN=false` restores refuse-on-outage for anyone who would rather stop paying than pay unscored.
+
+**It gates Solana, not Base.** The docs said EVM. `classifyNetwork` returns `network_not_scored` for `base` / `eip155:*`, and under our `unsupportedNetworkMode: "observe"` those are waved through with verdict `unknown` and no network call at all. The x402 client is shared across both chains, so registering it in the EVM branch still hooks Solana payments — `refuseWashFlagged` can only ever fire there. README and `docs/configuration.md` now say so, and say what leaves the machine when it is on: resource URL, `payTo`, price and chain, Solana only, opt-in only.
+
+**We keep our own hook registrar.** `installTwzrdAutoGate` _replaces_ `client.onBeforePaymentCreation` with its own wrapper, so every hook registered after it silently inherits a third-party kill switch — `TWZRD_AUTO_GATE=0` would skip ours too. SpendControl is safe today only because it is registered first. We now prefer `createTwzrdBeforePaymentHook` and register it ourselves, which is also what gives the timeout somewhere to live; the `installTwzrdAutoGate` path remains as a fallback and warns about both limitations.
+
+Tests went 12 → 23. The original set covered flag parsing and load time; nothing covered payment time, which is the part that can cost money or block it.
+
+### Fixed — the committed bundle was a release behind on the model catalog
+
+tsup inlines `src/top-models.json` and `src/models.ts`, so v0.12.276's src-only catalog change left the in-repo `dist/` serving the previous list. Nothing shipped wrong — `publish.yml` runs `npm ci` → build → publish, and the published 0.12.276 tarball did carry Gemini 3.8 Flash — but a `git clone` + run did not.
+
+### Fixed — Gemini Flash pricing is promotional and expires 2027-01-01
+
+Google prices the whole 3.6/3.7/3.8 Flash band at $0.75/$3.75 only **through 2026-12-31**, reverting to $1.50/$7.50. These numbers feed `calculateModelCost`, which drives the `maxCostPerRun` projection and every `cost` in the usage journal — carrying the promo rate past the reversion would under-report spend 2x and let a cap run to twice its stated limit. Both entries now carry the date and point at each other.
+
+This also settles whether `google/gemini-3.8-flash` is `3.6-flash` under a second name: it is not. blockrun live-probed it direct against Google (STOP, real text, `thoughtsTokenCount` 263, bare upstream id with no `-preview` suffix), and it accepts `thinkingConfig.thinkingBudget: 0`, which the 3.6 Flash generation rejects outright. The identical catalog metadata was a deliberately price-free shared description plus the shared promo.
+
 ## v0.12.276 — September 6, 2026
 
 ### Fixed — Gemini 3.8 Flash was routable but uncatalogued, which is a cost-cap hole
