@@ -15,6 +15,7 @@ Complete reference for ClawRouter configuration options.
 - [Tier Overrides](#tier-overrides)
 - [Scoring Weights](#scoring-weights)
 - [Spend Control & Counterparty Policy](#spend-control--counterparty-policy)
+- [TWZRD AutoGate (opt-in)](#twzrd-autogate-opt-in)
 - [Testing Configuration](#testing-configuration)
 
 ---
@@ -32,6 +33,9 @@ Complete reference for ClawRouter configuration options.
 | `CLAWROUTER_WORKER`         | -                                     | Set to `1` to enable Worker Mode (earn USDC by running health checks).                                                                                      |
 | `CLAWROUTER_DEBUG_HEADERS`  | (on)                                  | Set to `off`/`false`/`0` to suppress the `x-clawrouter-*` debug response headers.                                                                           |
 | `BLOCKRUN_WEB_SEARCH`       | (auto-enabled)                        | Set to `off` to disable BlockRun's Exa web search provider registration.                                                                                    |
+| `TWZRD_AUTO_GATE`           | unset (off)                           | Set to `1` to compose TWZRD AutoGate after SpendControl on the x402 pre-sign hook. Also `TWZRD_GATE_ENABLED=true`.                                          |
+| `TWZRD_GATE_TIMEOUT_MS`     | `2000`                                | How long the gate may take to answer before the payment proceeds on its own. Only meaningful with the gate on.                                              |
+| `TWZRD_FAIL_OPEN`           | `true`                                | Set to `false` to refuse payments when the gate is unreachable instead of proceeding. Only meaningful with the gate on.                                     |
 
 ---
 
@@ -729,6 +733,66 @@ retried against other models: a policy denial is a decision, not an outage.
 **Scope:** this governs payments made by the proxy. Local tools that sign with
 the same wallet outside the proxy's x402 client (Polymarket funding and order
 placement, `clawrouter doctor`'s probe) are not covered.
+
+---
+
+## TWZRD AutoGate (opt-in)
+
+Default **off**. This is not a re-open of default-on vendor lock. SpendControl
+above remains the vendor-neutral path; TWZRD is composed only when you ask.
+
+```bash
+export TWZRD_AUTO_GATE=1
+# equivalent:
+export TWZRD_GATE_ENABLED=true
+```
+
+When set, `startProxy` registers the gate's `createTwzrdBeforePaymentHook` on the
+**same** x402 client, **after** `registerSpendPolicyHook`. SpendControl lists
+still run first. A wash `payTo` is refused before `signTransaction`.
+
+### What it actually covers
+
+**Solana, not Base.** The gate's reputation corpus is Solana. `classifyNetwork`
+returns `network_not_scored` for `base` / `eip155:*`, and under our
+`unsupportedNetworkMode: "observe"` those are waved through with verdict
+`unknown` and no network call. The x402 client is shared between both chains, so
+the hook is registered once and applies to Solana payments; `refuseWashFlagged`
+can only ever fire there.
+
+### What leaves your machine
+
+On a Solana payment the gate POSTs the resource URL, `payTo`, price and chain to
+`https://intel.twzrd.xyz/v1/intel/preflight`, stamped with
+`X-TWZRD-Integration: clawrouter/<version>` and a per-process run id. Nothing is
+sent when the flag is unset, and nothing is sent for Base.
+
+### Availability
+
+The gate's own preflight sets no timeout, and the package defaults to
+`failOpen: false` — an outage there would refuse every paid Solana call. That is
+the shape of the v0.12.271 outage, where an unreachable third party made every
+Solana payment fail with a bare `fetch failed`. So:
+
+- We bound the answer at `TWZRD_GATE_TIMEOUT_MS` (default `2000`).
+- We pass `failOpen: true`. On timeout, rejection, or outage the payment
+  proceeds and a warning names the reason. SpendControl still applies — it is
+  the vendor-neutral guarantee and is untouched by any of this.
+- `TWZRD_FAIL_OPEN=false` restores refuse-on-outage if you would rather stop
+  paying than pay unscored.
+
+### Other notes
+
+- Optional dependency: `twzrd-x402-gate@0.9.3`. Forks that omit it still install.
+- Missing gate package (`MODULE_NOT_FOUND` for `twzrd-x402-gate` itself): fail
+  open — proxy boots, payments unguarded by TWZRD. Any other load/install error
+  fails closed.
+- We register the hook ourselves rather than calling `installTwzrdAutoGate`,
+  which replaces `onBeforePaymentCreation` on the client — that would make every
+  hook registered afterwards skippable via `TWZRD_AUTO_GATE=0`, including ours.
+- Identity: preflight stamps `X-Twzrd-Caller: clawrouter/<version>` so a refuse
+  is attributable.
+- Unset the flag to return to SpendControl only.
 
 ---
 

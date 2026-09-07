@@ -112,6 +112,7 @@ Environment Variables:
   BLOCKRUN_API_KEY        BlockRun API key (brk_...) — wins over the wallet when set
   BLOCKRUN_WALLET_KEY     Private key for x402 payments (auto-generated if not set)
   BLOCKRUN_PROXY_PORT     Default proxy port (default: 8402)
+  TWZRD_AUTO_GATE         Set to 1 to compose TWZRD AutoGate after SpendControl (default off)
 
 For more info: https://blockrun.ai/clawrouter.md
 `);

@@ -60203,6 +60203,149 @@ var init_api_key = __esm({
   }
 });
 
+// src/twzrd-autogate.ts
+import { randomUUID } from "crypto";
+function normalizeFlag(value) {
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed === "" ? void 0 : trimmed;
+}
+function isTwzrdAutoGateEnabled(env = process.env) {
+  const auto = normalizeFlag(env.TWZRD_AUTO_GATE);
+  const gate = normalizeFlag(env.TWZRD_GATE_ENABLED);
+  if (auto !== void 0 && FALSY.has(auto) || gate !== void 0 && FALSY.has(gate)) {
+    return false;
+  }
+  return auto !== void 0 && TRUTHY.has(auto) || gate !== void 0 && TRUTHY.has(gate);
+}
+function isMissingTwzrdGateModule(err) {
+  const code = err?.code;
+  const msg = err instanceof Error ? err.message : String(err);
+  const missingModule = code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND" || /Cannot find module/i.test(msg) || /Cannot find package/i.test(msg);
+  return missingModule && new RegExp(String.raw`['"]${TWZRD_GATE_PACKAGE}['"]`).test(msg);
+}
+function twzrdGateTimeoutMs(env = process.env) {
+  const raw = normalizeFlag(env.TWZRD_GATE_TIMEOUT_MS);
+  if (raw === void 0) return TWZRD_GATE_TIMEOUT_MS;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : TWZRD_GATE_TIMEOUT_MS;
+}
+function twzrdGateFailOpen(env = process.env) {
+  const raw = normalizeFlag(env.TWZRD_FAIL_OPEN);
+  return !(raw !== void 0 && FALSY.has(raw));
+}
+function twzrdAutoGateInstallOptions(env = process.env, runId = randomUUID) {
+  return {
+    refuseWashFlagged: true,
+    gateOnCanSpend: false,
+    unsupportedNetworkMode: "observe",
+    failOpen: twzrdGateFailOpen(env),
+    attribution: {
+      integration: `clawrouter/${VERSION}`,
+      runId: runId()
+    }
+  };
+}
+async function runTwzrdGateWithTimeout(run, opts) {
+  const log = opts.log ?? console;
+  let timer2;
+  try {
+    const raced = await Promise.race([
+      // Swallow here, not at the race, so a late rejection never goes unhandled.
+      Promise.resolve().then(run).catch((err) => ({ __twzrdError: err })),
+      new Promise((resolve) => {
+        timer2 = setTimeout(() => resolve(TIMED_OUT), opts.timeoutMs);
+      })
+    ]);
+    if (raced === TIMED_OUT) {
+      return decideOnGateFailure(`did not answer within ${opts.timeoutMs}ms`, opts.failOpen, log);
+    }
+    if (raced && typeof raced === "object" && "__twzrdError" in raced) {
+      const err = raced.__twzrdError;
+      const msg = err instanceof Error ? err.message : String(err);
+      return decideOnGateFailure(`threw: ${msg.slice(0, 120)}`, opts.failOpen, log);
+    }
+    return raced;
+  } finally {
+    if (timer2) clearTimeout(timer2);
+  }
+}
+function decideOnGateFailure(what, failOpen, log) {
+  const reason = `twzrd gate ${what}`;
+  if (failOpen) {
+    log.warn(
+      `[ClawRouter] ${reason} \u2014 proceeding. SpendControl still applied. Set TWZRD_FAIL_OPEN=false to refuse instead.`
+    );
+    return void 0;
+  }
+  log.warn(`[ClawRouter] ${reason} \u2014 refusing the payment (TWZRD_FAIL_OPEN=false).`);
+  return { abort: true, reason };
+}
+async function defaultLoadTwzrdGate() {
+  const specifier = TWZRD_GATE_PACKAGE;
+  return import(specifier);
+}
+async function maybeComposeTwzrdAutoGate(x402, options) {
+  const env = options?.env ?? process.env;
+  const log = options?.log ?? console;
+  if (!isTwzrdAutoGateEnabled(env)) {
+    return { status: "skipped" };
+  }
+  const load = options?.loadGate ?? defaultLoadTwzrdGate;
+  let gate;
+  try {
+    gate = await load();
+  } catch (err) {
+    if (isMissingTwzrdGateModule(err)) {
+      const reason = `${TWZRD_GATE_PACKAGE} is not installed`;
+      log.warn(
+        `[ClawRouter] TWZRD AutoGate opted in but ${reason} \u2014 skipping. npm i ${TWZRD_GATE_PACKAGE}@0.9.3`
+      );
+      return { status: "unavailable", reason };
+    }
+    throw err;
+  }
+  const installOpts = twzrdAutoGateInstallOptions(env);
+  const timeoutMs = twzrdGateTimeoutMs(env);
+  const ready = (via) => log.log(
+    `[ClawRouter] TWZRD AutoGate ON (opt-in, after SpendControl, ${via}; ${timeoutMs}ms budget, failOpen=${installOpts.failOpen}). Unset TWZRD_AUTO_GATE to disable.`
+  );
+  if (typeof gate.createTwzrdBeforePaymentHook === "function") {
+    const hook = gate.createTwzrdBeforePaymentHook(installOpts);
+    x402.onBeforePaymentCreation(
+      async (ctx) => runTwzrdGateWithTimeout(() => hook(ctx.selectedRequirements, ctx), {
+        timeoutMs,
+        failOpen: installOpts.failOpen,
+        log
+      })
+    );
+    ready("createTwzrdBeforePaymentHook");
+    return { status: "composed", via: "createTwzrdBeforePaymentHook" };
+  }
+  if (typeof gate.installTwzrdAutoGate === "function") {
+    gate.installTwzrdAutoGate(x402, installOpts);
+    log.warn(
+      "[ClawRouter] TWZRD AutoGate installed via installTwzrdAutoGate \u2014 that entry point registers its own hook, so the timeout budget does not apply and it replaces onBeforePaymentCreation on this client. Prefer a gate build exporting createTwzrdBeforePaymentHook."
+    );
+    ready("installTwzrdAutoGate");
+    return { status: "composed", via: "installTwzrdAutoGate" };
+  }
+  throw new Error(
+    `[ClawRouter] ${TWZRD_GATE_PACKAGE} is installed but exports neither installTwzrdAutoGate nor createTwzrdBeforePaymentHook`
+  );
+}
+var TWZRD_GATE_PACKAGE, TRUTHY, FALSY, TWZRD_GATE_TIMEOUT_MS, TIMED_OUT;
+var init_twzrd_autogate = __esm({
+  "src/twzrd-autogate.ts"() {
+    "use strict";
+    init_version4();
+    TWZRD_GATE_PACKAGE = "twzrd-x402-gate";
+    TRUTHY = /* @__PURE__ */ new Set(["1", "true", "yes", "on"]);
+    FALSY = /* @__PURE__ */ new Set(["0", "false", "no", "off"]);
+    TWZRD_GATE_TIMEOUT_MS = 2e3;
+    TIMED_OUT = { __twzrdTimedOut: true };
+  }
+});
+
 // src/compression/types.ts
 var DEFAULT_COMPRESSION_CONFIG;
 var init_types2 = __esm({
@@ -91787,6 +91930,7 @@ async function startProxy(options) {
     const evmSigner = toClientEvmSigner(account, evmPublicClient);
     const spendControl = options.spendControl ?? getSharedSpendControl();
     registerSpendPolicyHook(x402, spendControl);
+    await maybeComposeTwzrdAutoGate(x402);
     registerExactEvmScheme(x402, { signer: evmSigner });
   }
   let solanaAddress;
@@ -95372,6 +95516,7 @@ var init_proxy = __esm({
     init_auth();
     init_api_key();
     init_spend_control();
+    init_twzrd_autogate();
     init_compression();
     init_errors5();
     init_version4();
@@ -228160,7 +228305,7 @@ import {
 } from "fs";
 import { readFile as readFileAsync } from "fs/promises";
 import { homedir as homedir14 } from "os";
-import { randomUUID } from "crypto";
+import { randomUUID as randomUUID2 } from "crypto";
 import { join as join17 } from "path";
 async function waitForProxyHealth(port, timeoutMs = 3e3) {
   const start = Date.now();
@@ -228175,7 +228320,7 @@ async function waitForProxyHealth(port, timeoutMs = 3e3) {
   return false;
 }
 function writePrivateJsonSync(path5, value) {
-  const temporary = `${path5}.tmp.${randomUUID()}`;
+  const temporary = `${path5}.tmp.${randomUUID2()}`;
   try {
     writeFileSync3(temporary, JSON.stringify(value, null, 2), { mode: 384 });
     renameSync2(temporary, path5);

@@ -11,7 +11,11 @@ export default defineConfig({
   target: "node22",
   splitting: false,
   noExternal: [/.*/],
-  external: [...builtinModules.flatMap((m) => [m, `node:${m}`])],
+  external: [
+    ...builtinModules.flatMap((m) => [m, `node:${m}`]),
+    // Optional, default-off. Must stay a runtime import so forks can omit it.
+    "twzrd-x402-gate",
+  ],
   esbuildOptions(options) {
     // We and @blockrun/llm depend on each other, and `noExternal` inlines it. Its
     // `import { route, ... } from "@blockrun/clawrouter"` therefore resolves through
